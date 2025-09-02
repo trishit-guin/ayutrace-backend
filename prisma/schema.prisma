@@ -1,0 +1,492 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// 1. Define the database connection
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+// 2. Define the Prisma Client generator
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------------
+// ENUMERATIONS
+// -------------------------------------------
+
+enum OrgType {
+  COOPERATIVE
+  PROCESSOR
+  LABORATORY
+  MANUFACTURER
+  REGULATOR
+}
+
+enum UserRole {
+  FARMER
+  COOP_ADMIN
+  PROCESSOR
+  LAB_TECH
+  MANUFACTURER_QA
+  REGULATOR_ADMIN
+}
+
+enum BatchStatus {
+  COLLECTED
+  IN_TRANSIT
+  PROCESSING
+  AWAITING_TEST
+  TEST_PASSED
+  TEST_FAILED
+  FORMULATED
+  RECALLED
+}
+
+enum SupplyEventType {
+  PROCESSING
+  QUALITY_TEST
+  CUSTODY_TRANSFER
+}
+
+enum DocumentType {
+  LAB_CERTIFICATE
+  HARVEST_PHOTO
+  SHIPPING_MANIFEST
+  ORGANIC_CERTIFICATION
+}
+
+enum AuditAction {
+  USER_LOGIN
+  USER_LOGOUT
+  CREATE_BATCH
+  UPDATE_BATCH_STATUS
+  ADD_SUPPLY_CHAIN_EVENT
+  GENERATE_FINISHED_GOOD
+  VIEW_PROVENANCE
+}
+
+// -------------------------------------------
+// MODELS
+// -------------------------------------------
+
+/// Represents a distinct entity participating in the supply chain (e.g., a cooperative, a lab).
+model Organization {
+  /// Unique identifier for the organization (UUID).
+  /// e.g., "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+  organizationId String @id @default(uuid())
+
+  /// The legal name of the organization.
+  /// e.g., "Pune Organic Farmers Cooperative"
+  name String @unique
+
+  /// The type of the organization.
+  /// e.g., "COOPERATIVE"
+  type OrgType
+
+  /// Hyperledger Fabric Membership Service Provider ID.
+  /// e.g., "CooperativeMSP"
+  mspId String @unique @map("msp_id")
+
+  /// Flexible JSON field for contact information.
+  /// e.g., {"phone": "+919876543210", "address": "123 Agri St, Pune, Maharashtra"}
+  contactInfo Json? @map("contact_info")
+  
+  /// Flexible JSON for registration details.
+  /// e.g., {"licenseNumber": "FSSAI123456", "gstin": "27ABCDE1234F1Z5"}
+  registrationDetails Json? @map("registration_details")
+
+  /// Flag to activate or deactivate an organization.
+  /// e.g., true
+  isActive Boolean @default(true) @map("is_active")
+
+  /// Timestamp of creation.
+  /// e.g., "2025-09-02T12:00:00Z"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// Timestamp of last update.
+  /// e.g., "2025-09-02T12:00:00Z"
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users             User[]
+  ownedBatches      RawMaterialBatch[]
+  supplyChainEvents SupplyChainEvent[]
+  manufacturedGoods FinishedGood[]
+  auditLogs         AuditLog[]
+}
+
+/// Manages individual user accounts, credentials, and their role within an organization.
+model User {
+  /// Unique identifier for the user (UUID).
+  /// e.g., "b1c2d3e4-f5g6-7890-1234-567890abcdef"
+  userId String @id @default(uuid())
+
+  /// Foreign key linking to the Organization model.
+  organizationId String @map("organization_id")
+
+  /// User's email address, used for login.
+  /// e.g., "rajesh.p@puneorganic.coop"
+  email String @unique
+
+  /// Securely hashed user password.
+  /// e.g., "$2b$12$..."
+  passwordHash String @map("password_hash")
+
+  /// User's first name.
+  /// e.g., "Rajesh"
+  firstName String @map("first_name")
+
+  /// User's last name.
+  /// e.g., "Patil"
+  lastName String @map("last_name")
+
+  /// The role assigned to the user, dictating permissions.
+  /// e.g., "FARMER"
+  role UserRole
+
+  /// User's unique identity/certificate name within the Fabric CA.
+  /// e.g., "user1@cooperative.prakritichain.com"
+  blockchainIdentity String @unique @map("blockchain_identity")
+  
+  /// User's phone number.
+  /// e.g., "+919123456789"
+  phone String?
+
+  /// Timestamp of the user's last successful login.
+  /// e.g., "2025-09-02T11:30:00Z"
+  lastLogin DateTime? @map("last_login")
+
+  /// Flag to activate or deactivate a user account.
+  /// e.g., true
+  isActive Boolean @default(true) @map("is_active")
+
+  /// Timestamp of creation.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// Timestamp of last update.
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  organization     Organization      @relation(fields: [organizationId], references: [organizationId])
+  collectionEvents CollectionEvent[]
+  devices          Device[]
+  auditLogs        AuditLog[]
+}
+
+/// A lookup model containing business rules for each herb species.
+model SpeciesRule {
+  /// A short, unique code for the herb.
+  /// e.g., "WSGND"
+  speciesCode String @id @map("species_code")
+
+  /// Common name of the herb.
+  /// e.g., "Ashwagandha"
+  commonName String @map("common_name")
+
+  /// Scientific name of the herb.
+  /// e.g., "Withania somnifera"
+  scientificName String @map("scientific_name")
+
+  /// The allowed start of the harvesting window (day of year, 1-366).
+  /// e.g., 274 (for October 1st)
+  harvestStartDay Int @map("harvest_start_day")
+
+  /// The allowed end of the harvesting window (day of year, 1-366).
+  /// e.g., 90 (for March 31st of next year)
+  harvestEndDay Int @map("harvest_end_day")
+
+  /// Prisma does not natively support PostGIS types. Use raw queries for geo-operations.
+  /// e.g., "POLYGON((73.0 18.0, 74.0 18.0, 74.0 19.0, 73.0 19.0, 73.0 18.0))"
+  geoFence Unsupported("geography") @map("geo_fence")
+
+  /// JSON object storing acceptable ranges for quality tests.
+  /// e.g., {"moisturePct": {"max": 12}, "aflatoxin": {"max": 20}}
+  qualityThresholds Json? @map("quality_thresholds")
+
+  // Relations
+  batches RawMaterialBatch[]
+}
+
+/// The central model representing a lot of raw herb material.
+model RawMaterialBatch {
+  /// Unique identifier for the batch (UUID).
+  /// e.g., "c1d2e3f4-g5h6-7890-1234-567890abcdef"
+  batchId String @id @default(uuid())
+  
+  /// A human-readable name or lot number for the batch.
+  /// e.g., "PUNE-ASH-2025-09-02-A"
+  batchName String? @map("batch_name")
+
+  /// Foreign key to the species rules.
+  /// e.g., "WSGND"
+  speciesCode String @map("species_code")
+
+  /// The current stage of the batch in the supply chain.
+  /// e.g., "COLLECTED"
+  currentStatus BatchStatus @default(COLLECTED) @map("current_status")
+
+  /// Foreign key linking to the current custodial organization.
+  currentOwnerOrgId String @map("current_owner_org_id")
+
+  /// A unique identifier linking this off-chain record to its on-chain counterpart.
+  /// e.g., "batch_c1d2e3f4-g5h6-7890-1234-567890abcdef"
+  blockchainRefId String @unique @map("blockchain_ref_id")
+
+  /// Timestamp of creation.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// Timestamp of last update.
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  species           SpeciesRule          @relation(fields: [speciesCode], references: [speciesCode])
+  owner             Organization         @relation(fields: [currentOwnerOrgId], references: [organizationId])
+  collectionEvent   CollectionEvent?
+  supplyChainEvents SupplyChainEvent[]
+  composition       FGBatchComposition[]
+  documents         Document[]
+}
+
+/// Records the initial harvest event that creates a raw material batch.
+model CollectionEvent {
+  /// Unique identifier for the event (UUID).
+  /// e.g., "d1e2f3g4-h5i6-7890-1234-567890abcdef"
+  eventId String @id @default(uuid())
+
+  /// Foreign key linking to the raw material batch.
+  batchId String @unique @map("batch_id")
+
+  /// Foreign key linking to the farmer who collected the herb.
+  collectorId String @map("collector_id")
+
+  /// The precise time of collection.
+  /// e.g., "2025-09-02T08:30:00Z"
+  collectionTime DateTime @map("collection_time")
+
+  /// Prisma does not natively support PostGIS types. Use raw queries for geo-operations.
+  /// e.g., "POINT(73.8567 18.5204)"
+  location Unsupported("geography")
+
+  /// The weight of the collected material in kilograms.
+  /// e.g., 55.50
+  quantityKg Decimal @map("quantity_kg")
+
+  /// JSON object for initial on-site quality checks.
+  /// e.g., {"moisture": 11.5, "color": "good", "foreignMatter": "low"}
+  initialQualityMetrics Json? @map("initial_quality_metrics")
+
+  /// The transaction hash from the Fabric ledger for this specific event.
+  /// e.g., "txid_abcdef123456..."
+  blockchainTxHash String? @unique @map("blockchain_tx_hash")
+
+  /// Timestamp of creation.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  batch     RawMaterialBatch @relation(fields: [batchId], references: [batchId], onDelete: Cascade)
+  collector User             @relation(fields: [collectorId], references: [userId])
+  documents Document[]
+}
+
+/// A polymorphic model to record all subsequent events in a batch's life.
+model SupplyChainEvent {
+  /// Unique identifier for the event (UUID).
+  /// e.g., "e1f2g3h4-i5j6-7890-1234-567890abcdef"
+  eventId String @id @default(uuid())
+
+  /// Foreign key linking to the raw material batch.
+  batchId String @map("batch_id")
+
+  /// Foreign key linking to the organization that performed the event.
+  actorOrgId String @map("actor_org_id")
+
+  /// The type of event that occurred.
+  /// e.g., "QUALITY_TEST"
+  eventType SupplyEventType @map("event_type")
+
+  /// Timestamp when the event occurred.
+  /// e.g., "2025-09-03T10:00:00Z"
+  eventTimestamp DateTime @map("event_timestamp")
+
+  /// JSON object containing data specific to the event type.
+  /// e.g., {"testType": "pesticide_screen", "result": "PASS", "documentId": "..."}
+  eventDetails Json @map("event_details")
+
+  /// The transaction hash from the Fabric ledger.
+  /// e.g., "txid_fedcba654321..."
+  blockchainTxHash String? @unique @map("blockchain_tx_hash")
+
+  /// Timestamp of creation.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  batch     RawMaterialBatch @relation(fields: [batchId], references: [batchId], onDelete: Cascade)
+  actor     Organization     @relation(fields: [actorOrgId], references: [organizationId])
+  documents Document[]
+}
+
+/// Represents the final, packaged product ready for consumers.
+model FinishedGood {
+  /// Unique identifier for the product (UUID).
+  /// e.g., "f1g2h3i4-j5k6-7890-1234-567890abcdef"
+  productId String @id @default(uuid())
+
+  /// Foreign key linking to the manufacturer organization.
+  manufacturerId String @map("manufacturer_id")
+
+  /// The final Stock Keeping Unit for the product.
+  /// e.g., "AWPL-ASH-100G-001"
+  sku String @unique
+  
+  /// The manufacturer's internal batch or lot number.
+  /// e.g., "LOT202509-C"
+  batchNumber String @map("batch_number")
+
+  /// The consumer-facing product name.
+  /// e.g., "Organic Ashwagandha Root Powder - 100g"
+  productName String @map("product_name")
+
+  /// The unique identifier embedded in the consumer-facing QR code.
+  /// e.g., "pkc_f1g2h3i4j5k6"
+  qrCodeId String @unique @map("qr_code_id")
+
+  /// The date the product was manufactured.
+  /// e.g., "2025-09-05T00:00:00Z"
+  manufacturingDate DateTime @map("manufacturing_date")
+
+  /// The expiration date of the product.
+  /// e.g., "2027-09-04T00:00:00Z"
+  expiryDate DateTime @map("expiry_date")
+
+  /// Timestamp of creation.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  manufacturer Organization         @relation(fields: [manufacturerId], references: [organizationId])
+  composition  FGBatchComposition[]
+}
+
+/// A mapping model that links raw material batches to a final finished good.
+model FGBatchComposition {
+  /// Unique identifier for the composition link (UUID).
+  /// e.g., "g1h2i3j4-k5l6-7890-1234-567890abcdef"
+  compositionId String @id @default(uuid())
+
+  /// Foreign key to the finished good.
+  finishedGoodId String @map("finished_good_id")
+
+  /// Foreign key to the raw material batch.
+  rawMaterialBatchId String @map("raw_material_batch_id")
+
+  /// The amount of the raw batch used in this formulation in kilograms.
+  /// e.g., 25.00
+  quantityUsedKg Decimal @map("quantity_used_kg")
+
+  // Relations
+  finishedGood     FinishedGood     @relation(fields: [finishedGoodId], references: [productId], onDelete: Cascade)
+  rawMaterialBatch RawMaterialBatch @relation(fields: [rawMaterialBatchId], references: [batchId])
+
+  @@unique([finishedGoodId, rawMaterialBatchId])
+}
+
+/// NEW MODEL: Tracks uploaded documents like certificates and photos.
+model Document {
+  /// Unique identifier for the document (UUID).
+  /// e.g., "h1i2j3k4-l5m6-7890-1234-567890abcdef"
+  documentId String @id @default(uuid())
+  
+  /// The type of document being uploaded.
+  /// e.g., "LAB_CERTIFICATE"
+  documentType DocumentType @map("document_type")
+  
+  /// The original filename of the uploaded file.
+  /// e.g., "Batch_XYZ_COA.pdf"
+  originalFilename String @map("original_filename")
+  
+  /// The hash of the file stored in a distributed file system like IPFS.
+  /// e.g., "QmXoW8...89aB"
+  storageHash String @unique @map("storage_hash")
+  
+  /// The MIME type of the file.
+  /// e.g., "application/pdf"
+  mimeType String @map("mime_type")
+
+  /// The size of the file in bytes.
+  /// e.g., 512000
+  fileSizeBytes Int @map("file_size_bytes")
+  
+  /// Timestamp of upload.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Optional relations to link a document to its context
+  rawMaterialBatchId String? @map("raw_material_batch_id")
+  collectionEventId String? @map("collection_event_id")
+  supplyChainEventId String? @map("supply_chain_event_id")
+
+  rawMaterialBatch  RawMaterialBatch?  @relation(fields: [rawMaterialBatchId], references: [batchId])
+  collectionEvent   CollectionEvent?   @relation(fields: [collectionEventId], references: [eventId])
+  supplyChainEvent  SupplyChainEvent?  @relation(fields: [supplyChainEventId], references: [eventId])
+}
+
+/// NEW MODEL: Manages mobile devices registered to users for offline sync and security.
+model Device {
+  /// Unique identifier for the device (UUID).
+  /// e.g., "i1j2k3l4-m5n6-7890-1234-567890abcdef"
+  deviceId String @id @default(uuid())
+
+  /// Foreign key to the user who owns the device.
+  userId String @map("user_id")
+  
+  /// A unique identifier for the physical device.
+  /// e.g., "a1b2c3d4e5f6g7h8"
+  deviceIdentifier String @unique @map("device_identifier")
+  
+  /// A human-readable name for the device.
+  /// e.g., "Rajesh's Samsung"
+  deviceName String @map("device_name")
+  
+  /// The last time the device successfully synced with the server.
+  /// e.g., "2025-09-02T11:45:00Z"
+  lastSyncAt DateTime? @map("last_sync_at")
+  
+  /// Flag to activate or revoke access for a device.
+  /// e.g., true
+  isActive Boolean @default(true) @map("is_active")
+  
+  /// Timestamp of registration.
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relation
+  user User @relation(fields: [userId], references: [userId])
+}
+
+/// NEW MODEL: For security and compliance, logs important actions performed by users.
+model AuditLog {
+  /// Unique identifier for the audit log entry (UUID).
+  /// e.g., "j1k2l3m4-n5o6-7890-1234-567890abcdef"
+  auditId String @id @default(uuid())
+
+  /// Foreign key to the user who performed the action.
+  userId String @map("user_id")
+  
+  /// Foreign key to the user's organization.
+  organizationId String @map("organization_id")
+  
+  /// The action that was performed.
+  /// e.g., "CREATE_BATCH"
+  action AuditAction
+  
+  /// JSON object containing details about the action.
+  /// e.g., {"batchId": "c1d2e3f4...", "ipAddress": "103.22.182.254"}
+  details Json?
+  
+  /// Timestamp of the action.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [userId])
+  organization Organization @relation(fields: [organizationId], references: [organizationId])
+}
