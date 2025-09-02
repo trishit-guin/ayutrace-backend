@@ -5,7 +5,6 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 // 2. Define the Prisma Client generator
@@ -149,7 +148,7 @@ model User {
 
   /// User's unique identity/certificate name within the Fabric CA.
   /// e.g., "user1@cooperative.prakritichain.com"
-  blockchainIdentity String @unique @map("blockchain_identity")
+  blockchainIdentity String? @unique @map("blockchain_identity")
   
   /// User's phone number.
   /// e.g., "+919123456789"
