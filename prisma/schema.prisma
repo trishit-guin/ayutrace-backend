@@ -256,7 +256,7 @@ model CollectionEvent {
   eventId String @id @default(uuid())
 
   /// Foreign key linking to the raw material batch.
-  batchId String @unique @map("batch_id")
+  batchId String? @unique @map("batch_id")
 
   /// Foreign key linking to the farmer who collected the herb.
   collectorId String @map("collector_id")
@@ -285,7 +285,7 @@ model CollectionEvent {
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  batch     RawMaterialBatch @relation(fields: [batchId], references: [batchId], onDelete: Cascade)
+  batch     RawMaterialBatch? @relation(fields: [batchId], references: [batchId], onDelete: Cascade)
   collector User             @relation(fields: [collectorId], references: [userId])
   documents Document[]
 }
