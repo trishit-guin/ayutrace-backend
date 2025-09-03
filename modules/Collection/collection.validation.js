@@ -32,3 +32,7 @@ const createCollectionEventSchema = z.object({
 module.exports = {
   createCollectionEventSchema,
 };
+// Zod removed. Add custom validation or leave empty if not needed.
+module.exports = {
+  createCollectionEventSchema: {},
+};

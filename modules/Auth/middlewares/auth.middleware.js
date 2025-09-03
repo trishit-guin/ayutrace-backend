@@ -9,7 +9,10 @@ const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Unauthorized: No token provided' });
+    return res.status(401).json({ 
+      message: 'Access denied. No token provided.',
+      timestamp: new Date().toISOString(),
+    });
   }
 
   const token = authHeader.split(' ')[1];
@@ -19,10 +22,41 @@ const authMiddleware = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
 
     // 3. Find the user and attach to request
-    const user = await prisma.user.findUnique({ where: { userId: decoded.userId } });
+    const user = await prisma.user.findUnique({ 
+      where: { userId: decoded.userId },
+      include: {
+        organization: {
+          select: {
+            organizationId: true,
+            name: true,
+            type: true,
+            isActive: true,
+          }
+        }
+      }
+    });
 
     if (!user) {
-      return res.status(401).json({ message: 'Unauthorized: User not found' });
+      return res.status(401).json({ 
+        message: 'Invalid token. User not found.',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Check if user account is active
+    if (!user.isActive) {
+      return res.status(403).json({ 
+        message: 'User account is deactivated',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Check if user's organization is active
+    if (!user.organization.isActive) {
+      return res.status(403).json({ 
+        message: 'Organization is deactivated',
+        timestamp: new Date().toISOString(),
+      });
     }
 
     // Attach user to the request object (excluding password)
@@ -32,7 +66,20 @@ const authMiddleware = async (req, res, next) => {
     // 4. Move to the next function
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Unauthorized: Invalid token' });
+    let message = 'Invalid token.';
+    
+    if (error.name === 'TokenExpiredError') {
+      message = 'Token expired.';
+    } else if (error.name === 'JsonWebTokenError') {
+      message = 'Invalid token.';
+    } else if (error.name === 'NotBeforeError') {
+      message = 'Token not active.';
+    }
+
+    return res.status(401).json({ 
+      message,
+      timestamp: new Date().toISOString(),
+    });
   }
 };
 

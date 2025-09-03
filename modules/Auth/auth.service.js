@@ -38,10 +38,31 @@ async function registerUser(input) {
 
 // Service to handle user login
 async function loginUser(input) {
-  // Find user by email
-  const user = await prisma.user.findUnique({ where: { email: input.email } });
+  // Find user by email with organization info
+  const user = await prisma.user.findUnique({ 
+    where: { email: input.email },
+    include: {
+      organization: {
+        select: {
+          isActive: true,
+          name: true,
+        }
+      }
+    }
+  });
+  
   if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) {
     throw new Error('Invalid email or password');
+  }
+
+  // Check if user account is active
+  if (!user.isActive) {
+    throw new Error('User account is deactivated');
+  }
+
+  // Check if user's organization is active
+  if (!user.organization.isActive) {
+    throw new Error('Organization is deactivated');
   }
 
   // Update last login time
