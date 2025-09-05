@@ -2,10 +2,14 @@ const { registerUser, loginUser } = require('./auth.service');
 
 async function registerUserHandler(req, res) {
   try {
-    const user = await registerUser(req.body);
+    const { user, token } = await registerUser(req.body);
     return res.status(201).json({
-      message: 'User created successfully',
-      user,
+      success: true,
+      message: 'User registered successfully',
+      data: {
+        user,
+        token
+      },
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -41,10 +45,14 @@ async function registerUserHandler(req, res) {
 
 async function loginUserHandler(req, res) {
   try {
-    const { token } = await loginUser(req.body);
+    const { user, token } = await loginUser(req.body);
     return res.status(200).json({
+      success: true,
       message: 'Login successful',
-      token,
+      data: {
+        user,
+        token
+      },
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

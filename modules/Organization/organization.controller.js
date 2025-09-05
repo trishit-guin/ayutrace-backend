@@ -3,6 +3,29 @@ const { createOrganization } = require('./organization.service');
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     Organization:
+ *       type: object
+ *       required:
+ *         - organizationId
+ *         - name
+ *         - type
+ *       properties:
+ *         organizationId:
+ *           type: string
+ *           format: uuid
+ *           description: Unique organization ID
+ *         name:
+ *           type: string
+ *           description: Organization name
+ *         type:
+ *           $ref: '#/components/schemas/OrgType'
+ *         users:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/User'
+ *           description: List of users in this organization
  * /api/organizations:
  *   post:
  *     summary: Create a new organization
@@ -15,32 +38,27 @@ const { createOrganization } = require('./organization.service');
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Organization'
+ *             type: object
+ *             required:
+ *               - name
+ *               - type
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Organization name
+ *                 example: "Pune Organic Farmers Cooperative"
+ *               type:
+ *                 $ref: '#/components/schemas/OrgType'
  *           example:
  *             name: "Pune Organic Farmers Cooperative"
- *             type: "COOPERATIVE"
- *             mspId: "CooperativeMSP"
- *             contactInfo:
- *               phone: "+919876543210"
- *               address: "123 Agri St, Pune, Maharashtra"
- *               email: "contact@puneorganic.coop"
- *             registrationDetails:
- *               licenseNumber: "FSSAI123456"
- *               gstin: "27ABCDE1234F1Z5"
- *             isActive: true
+ *             type: "FARMER"
  *     responses:
  *       201:
  *         description: Organization created successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Organization created successfully
- *                 organization:
- *                   $ref: '#/components/schemas/Organization'
+ *               $ref: '#/components/schemas/Organization'
  *       401:
  *         description: Unauthorized - Invalid or missing token
  *         content:

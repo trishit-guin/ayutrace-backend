@@ -23,17 +23,7 @@ const authMiddleware = async (req, res, next) => {
 
     // 3. Find the user and attach to request
     const user = await prisma.user.findUnique({ 
-      where: { userId: decoded.userId },
-      include: {
-        organization: {
-          select: {
-            organizationId: true,
-            name: true,
-            type: true,
-            isActive: true,
-          }
-        }
-      }
+      where: { userId: decoded.userId }
     });
 
     if (!user) {
@@ -47,14 +37,6 @@ const authMiddleware = async (req, res, next) => {
     if (!user.isActive) {
       return res.status(403).json({ 
         message: 'User account is deactivated',
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // Check if user's organization is active
-    if (!user.organization.isActive) {
-      return res.status(403).json({ 
-        message: 'Organization is deactivated',
         timestamp: new Date().toISOString(),
       });
     }

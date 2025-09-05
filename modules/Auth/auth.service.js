@@ -16,8 +16,13 @@ async function registerUser(input) {
     throw new Error('User with this email already exists');
   }
 
-  // Separate the password from the rest of the user data
-  const { password, ...userData } = input;
+  // Check if organization exists
+  const organization = await prisma.organization.findUnique({ 
+    where: { organizationId: input.organizationId } 
+  });
+  if (!organization) {
+    throw new Error('Organization not found');
+  }
 
   // Hash the password
   const salt = await bcrypt.genSalt(10);
@@ -26,29 +31,41 @@ async function registerUser(input) {
   // Create the user in the database
   const user = await prisma.user.create({
     data: {
-      ...userData,
-      passwordHash: passwordHash, // Match the schema field `passwordHash`
+      email: input.email,
+      passwordHash: passwordHash,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      orgType: input.orgType,
+      organizationId: input.organizationId,
+      phone: input.phone,
+      blockchainIdentity: input.blockchainIdentity,
+      location: input.location,
+      latitude: input.latitude,
+      longitude: input.longitude,
     },
   });
 
+  // Generate JWT token for immediate authentication
+  const token = jwt.sign(
+    {
+      userId: user.userId,
+      orgType: user.orgType,
+      email: user.email,
+    },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+
   // Don't return the password hash
   const { passwordHash: _, ...userWithoutPassword } = user;
-  return userWithoutPassword;
+  return { user: userWithoutPassword, token };
 }
 
 // Service to handle user login
 async function loginUser(input) {
-  // Find user by email with organization info
+  // Find user by email
   const user = await prisma.user.findUnique({ 
-    where: { email: input.email },
-    include: {
-      organization: {
-        select: {
-          isActive: true,
-          name: true,
-        }
-      }
-    }
+    where: { email: input.email }
   });
   
   if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) {
@@ -58,11 +75,6 @@ async function loginUser(input) {
   // Check if user account is active
   if (!user.isActive) {
     throw new Error('User account is deactivated');
-  }
-
-  // Check if user's organization is active
-  if (!user.organization.isActive) {
-    throw new Error('Organization is deactivated');
   }
 
   // Update last login time
@@ -75,14 +87,16 @@ async function loginUser(input) {
   const token = jwt.sign(
     {
       userId: user.userId,
-      role: user.role,
-      organizationId: user.organizationId,
+      orgType: user.orgType,
+      email: user.email,
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
 
-  return { token };
+  // Don't return the password hash
+  const { passwordHash: _, ...userWithoutPassword } = user;
+  return { user: userWithoutPassword, token };
 }
 
 module.exports = {

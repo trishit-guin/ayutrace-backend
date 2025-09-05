@@ -1,5 +1,5 @@
 const express = require('express');
-const { validate } = require('./middlewares/validate'); // Adjust path
+const { validate } = require('./middlewares/validate');
 const { registerUserSchema, loginUserSchema } = require('./auth.validation');
 const { registerUserHandler, loginUserHandler, getMeHandler } = require('./auth.controller');
 const { authMiddleware } = require('./middlewares/auth.middleware');
@@ -8,99 +8,112 @@ const router = express.Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       required:
+ *         - email
+ *         - passwordHash
+ *         - firstName
+ *         - lastName
+ *         - orgType
+ *         - organizationId
+ *       properties:
+ *         userId:
+ *           type: string
+ *           format: uuid
+ *         email:
+ *           type: string
+ *           format: email
+ *         firstName:
+ *           type: string
+ *         lastName:
+ *           type: string
+ *         orgType:
+ *           $ref: '#/components/schemas/OrgType'
+ *         organizationId:
+ *           type: string
+ *           format: uuid
+ *           description: Organization the user belongs to
+ *         organization:
+ *           $ref: '#/components/schemas/Organization'
+ *         blockchainIdentity:
+ *           type: string
+ *           description: Optional blockchain identity for the user
+ *         phone:
+ *           type: string
+ *           description: Optional phone number
+ *         location:
+ *           type: string
+ *           description: Location information (especially for farmers)
+ *         latitude:
+ *           type: number
+ *           format: float
+ *           description: GPS latitude coordinate
+ *         longitude:
+ *           type: number
+ *           format: float
+ *           description: GPS longitude coordinate
  * /api/auth/register:
  *   post:
  *     summary: Register a new user
- *     description: Creates a new user account in the system with role-based access control
+ *     description: Creates a new user account in the system with organization type-based access control
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UserRegistration'
- *           examples:
- *             farmer:
- *               summary: Farmer registration
- *               value:
- *                 email: "rajesh.p@puneorganic.coop"
- *                 password: "SecurePassword123!"
- *                 firstName: "Rajesh"
- *                 lastName: "Patil"
- *                 organizationId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
- *                 role: "FARMER"
- *                 blockchainIdentity: "user1@cooperative.prakritichain.com"
- *             coopAdmin:
- *               summary: Cooperative admin registration
- *               value:
- *                 email: "admin@puneorganic.coop"
- *                 password: "AdminPassword123!"
- *                 firstName: "Priya"
- *                 lastName: "Sharma"
- *                 organizationId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
- *                 role: "COOP_ADMIN"
- *             labTech:
- *               summary: Lab technician registration
- *               value:
- *                 email: "tech@qualitylab.com"
- *                 password: "LabTech123!"
- *                 firstName: "Dr. Amit"
- *                 lastName: "Kumar"
- *                 organizationId: "b2c3d4e5-f6g7-8901-2345-678901bcdefg"
- *                 role: "LAB_TECH"
+ *             $ref: '#/components/schemas/User'
+ *           example:
+ *             email: "rajesh.p@puneorganic.coop"
+ *             password: "SecurePassword123!"
+ *             firstName: "Rajesh"
+ *             lastName: "Patil"
+ *             orgType: "FARMER"
+ *             organizationId: "550e8400-e29b-41d4-a716-446655440000"
+ *             blockchainIdentity: "user1@cooperative.prakritichain.com"
+ *             phone: "+919876543210"
+ *             location: "Satara District, Maharashtra"
+ *             latitude: 17.6868
+ *             longitude: 74.0183
  *     responses:
  *       201:
- *         description: User created successfully
+ *         description: User registered successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/RegistrationResponse'
- *             example:
- *               message: "User created successfully"
- *               user:
- *                 userId: "b1c2d3e4-f5g6-7890-1234-567890abcdef"
- *                 organizationId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
- *                 email: "rajesh.p@puneorganic.coop"
- *                 firstName: "Rajesh"
- *                 lastName: "Patil"
- *                 role: "FARMER"
- *                 blockchainIdentity: "user1@cooperative.prakritichain.com"
- *                 phone: null
- *                 lastLogin: null
- *                 isActive: true
- *                 createdAt: "2025-09-03T12:00:00Z"
- *                 updatedAt: "2025-09-03T12:00:00Z"
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "User registered successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     token:
+ *                       type: string
+ *                       description: JWT authentication token
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *       400:
- *         description: Validation error
+ *         description: Validation error or user already exists
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ValidationError'
- *             example:
- *               message: "Validation failed"
- *               errors:
- *                 - field: "email"
- *                   message: "A valid email is required"
- *                 - field: "password"
- *                   message: "Password must be at least 8 characters long"
- *       409:
- *         description: User already exists
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               message: "User with this email already exists"
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Internal server error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               message: "Internal server error"
+ *               $ref: '#/components/schemas/Error'
  */
-// Register route with validation
 router.post('/register', validate(registerUserSchema), registerUserHandler);
 
 /**
@@ -115,78 +128,62 @@ router.post('/register', validate(registerUserSchema), registerUserHandler);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UserLogin'
- *           examples:
- *             farmer:
- *               summary: Farmer login
- *               value:
- *                 email: "rajesh.p@puneorganic.coop"
- *                 password: "SecurePassword123!"
- *             admin:
- *               summary: Admin login
- *               value:
- *                 email: "admin@puneorganic.coop"
- *                 password: "AdminPassword123!"
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *                 example: "rajesh.p@puneorganic.coop"
+ *               password:
+ *                 type: string
+ *                 description: User's password
+ *                 example: "SecurePassword123!"
  *     responses:
  *       200:
  *         description: Login successful
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/LoginResponse'
- *             example:
- *               message: "Login successful"
- *               token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJiMWMyZDNlNC1mNWc2LTc4OTAtMTIzNC01Njc4OTBhYmNkZWYiLCJyb2xlIjoiRkFSTUVSIiwib3JnYW5pemF0aW9uSWQiOiJhMWIyYzNkNC1lNWY2LTc4OTAtMTIzNC01Njc4OTBhYmNkZWYiLCJpYXQiOjE3MjUzNjQ4MDAsImV4cCI6MTcyNTQ1MTIwMH0..."
- *         headers:
- *           X-RateLimit-Limit:
- *             description: Request limit per hour
- *             schema:
- *               type: integer
- *               example: 100
- *           X-RateLimit-Remaining:
- *             description: Remaining requests in the current window
- *             schema:
- *               type: integer
- *               example: 99
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Login successful"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     token:
+ *                       type: string
+ *                       description: JWT authentication token
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  *       400:
  *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ValidationError'
- *             example:
- *               message: "Validation failed"
- *               errors:
- *                 - field: "email"
- *                   message: "A valid email is required"
- *                 - field: "password"
- *                   message: "Password is required"
+ *               $ref: '#/components/schemas/Error'
  *       401:
  *         description: Invalid credentials
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               message: "Invalid email or password"
- *       429:
- *         description: Too many login attempts
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               message: "Too many login attempts. Please try again later."
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Internal server error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               message: "Internal server error"
+ *               $ref: '#/components/schemas/Error'
  */
-// Login route with validation
 router.post('/login', validate(loginUserSchema), loginUserHandler);
 
 /**
@@ -195,7 +192,7 @@ router.post('/login', validate(loginUserSchema), loginUserHandler);
  *   get:
  *     summary: Get current user profile
  *     description: Retrieves the profile information of the currently authenticated user
- *     tags: [Users]
+ *     tags: [Authentication]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -204,58 +201,29 @@ router.post('/login', validate(loginUserSchema), loginUserHandler);
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/MeResponse'
- *             example:
- *               user:
- *                 userId: "b1c2d3e4-f5g6-7890-1234-567890abcdef"
- *                 organizationId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
- *                 email: "rajesh.p@puneorganic.coop"
- *                 firstName: "Rajesh"
- *                 lastName: "Patil"
- *                 role: "FARMER"
- *                 blockchainIdentity: "user1@cooperative.prakritichain.com"
- *                 phone: "+919123456789"
- *                 lastLogin: "2025-09-03T11:30:00Z"
- *                 isActive: true
- *                 createdAt: "2025-09-02T12:00:00Z"
- *                 updatedAt: "2025-09-03T11:30:00Z"
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
  *       401:
  *         description: Unauthorized - Invalid or missing token
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               missingToken:
- *                 summary: Missing authorization token
- *                 value:
- *                   message: "Access denied. No token provided."
- *               invalidToken:
- *                 summary: Invalid token
- *                 value:
- *                   message: "Invalid token."
- *               expiredToken:
- *                 summary: Expired token
- *                 value:
- *                   message: "Token expired."
- *       403:
- *         description: Forbidden - User account is deactivated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               message: "User account is deactivated"
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Internal server error
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               message: "Internal server error"
+ *               $ref: '#/components/schemas/Error'
  */
-// The authMiddleware will run first. If the token is valid, it will call getMeHandler.
 router.get('/me', authMiddleware, getMeHandler);
 
 module.exports = router;
