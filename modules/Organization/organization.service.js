@@ -2,7 +2,22 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function createOrganization(data) {
-  return await prisma.organization.create({ data });
+  // Only use 'type' field for creation
+  return await prisma.organization.create({
+    data: {
+      type: data.type
+    }
+  });
 }
 
-module.exports = { createOrganization };
+// Find organization by type
+async function findOrganizationByType(type) {
+  return await prisma.organization.findFirst({
+    where: { type }
+  });
+}
+
+module.exports = {
+  createOrganization,
+  findOrganizationByType,
+};

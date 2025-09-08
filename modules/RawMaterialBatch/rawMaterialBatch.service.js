@@ -22,8 +22,11 @@ const createRawMaterialBatch = async (data) => {
           farmer: true,
         }
       },
-      processingEvents: true,
       supplyChainEvents: true,
+      documents: true,
+      composition: true,
+      qrCodes: true,
+      currentOwner: true
     }
   });
 };
@@ -53,14 +56,14 @@ const getRawMaterialBatches = async ({ page, limit, herbName, status }) => {
             farmer: true,
           }
         },
-        processingEvents: {
-          orderBy: { timestamp: 'desc' },
-          take: 1,
-        },
         supplyChainEvents: {
           orderBy: { timestamp: 'desc' },
           take: 1,
         },
+        documents: true,
+        composition: true,
+        qrCodes: true,
+        currentOwner: true
       },
       orderBy: { createdAt: 'desc' },
     }),

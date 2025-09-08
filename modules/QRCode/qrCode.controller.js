@@ -44,9 +44,19 @@ const QRCode = require('qrcode');
 const generateQRCodeHandler = async (req, res) => {
   try {
     const result = await generateQRCode(req.body);
+    const qrData = JSON.stringify({
+      entityType: req.body.entityType,
+      entityId: req.body.entityId,
+      customData: req.body.customData,
+      qrHash: result.qrHash
+    });
+    const qrImage = await QRCode.toDataURL(qrData);
     res.status(201).json({
       success: true,
-      data: result,
+      data: {
+        ...result,
+        qrImage
+      },
       message: 'QR code generated successfully',
     });
   } catch (error) {

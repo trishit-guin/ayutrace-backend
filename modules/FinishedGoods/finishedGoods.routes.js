@@ -36,6 +36,7 @@ const router = express.Router();
  *               - productType
  *               - quantity
  *               - unit
+ *               - composition
  *             properties:
  *               productName:
  *                 type: string
@@ -67,6 +68,29 @@ const router = express.Router();
  *                 format: uuid
  *                 description: ID of the manufacturer
  *                 example: "b1c2d3e4-f5g6-7890-1234-567890abcdef"
+ *               composition:
+ *                 type: array
+ *                 description: Composition of the finished good
+ *                 minItems: 1
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - rawMaterialBatchId
+ *                     - percentage
+ *                     - quantityUsed
+ *                   properties:
+ *                     rawMaterialBatchId:
+ *                       type: string
+ *                       description: Raw material batch ID
+ *                       example: "4cbcc605-7b7d-4bbc-975a-72cf68b84776"
+ *                     percentage:
+ *                       type: number
+ *                       description: Percentage of this raw material in the finished good
+ *                       example: 100
+ *                     quantityUsed:
+ *                       type: number
+ *                       description: Quantity of raw material used
+ *                       example: 50
  *     responses:
  *       201:
  *         description: Finished good created successfully
@@ -215,14 +239,29 @@ router.get('/:id/composition', getFinishedGoodCompositionHandler);
  *                 $ref: '#/components/schemas/QuantityUnit'
  *               batchNumber:
  *                 type: string
- *               manufacturingDate:
- *                 type: string
- *                 format: date-time
  *               expiryDate:
  *                 type: string
  *                 format: date-time
- *               notes:
+ *               productType:
+ *                 $ref: '#/components/schemas/FinishedGoodProductType'
+ *               manufacturerId:
  *                 type: string
+ *                 format: uuid
+ *               composition:
+ *                 type: array
+ *                 description: Composition of the finished good
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     rawMaterialBatchId:
+ *                       type: string
+ *                       description: Raw material batch ID
+ *                     percentage:
+ *                       type: number
+ *                       description: Percentage of this raw material in the finished good
+ *                     quantityUsed:
+ *                       type: number
+ *                       description: Quantity of raw material used
  *     responses:
  *       200:
  *         description: Finished good updated successfully

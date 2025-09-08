@@ -18,8 +18,7 @@ const getDocumentsSchema = z.object({
     page: z.string().transform(Number).pipe(z.number().int().positive()).optional(),
     limit: z.string().transform(Number).pipe(z.number().int().positive().max(100)).optional(),
     documentType: z.enum(['CERTIFICATE', 'PHOTO', 'INVOICE', 'REPORT', 'TEST_RESULT', 'LICENSE', 'OTHER']).optional(),
-    entityType: z.enum(['COLLECTION_EVENT', 'RAW_MATERIAL_BATCH', 'SUPPLY_CHAIN_EVENT', 'FINISHED_GOOD', 'USER', 'ORGANIZATION']).optional(),
-    entityId: z.string().optional(),
+  // entityType and entityId removed; use relation fields instead
   }),
 });
 

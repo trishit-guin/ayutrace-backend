@@ -8,9 +8,10 @@ const generateQRCode = async (data) => {
   // Generate unique QR hash
   const qrHash = crypto.randomBytes(16).toString('hex');
   
+  const { purpose, ...prismaData } = data;
   return await prisma.qRCode.create({
     data: {
-      ...data,
+      ...prismaData,
       // Let Prisma generate UUID automatically
       qrHash,
     },
@@ -147,17 +148,6 @@ const scanQRCode = async (qrHash) => {
                 }
               },
               herbSpecies: true,
-            }
-          },
-          processingEvents: {
-            include: {
-              processor: {
-                select: {
-                  userId: true,
-                  firstName: true,
-                  lastName: true,
-                }
-              }
             }
           },
           supplyChainEvents: {

@@ -21,7 +21,7 @@ const { specs, swaggerUi } = require('./config/swagger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+app.use(express.json());
 // Basic middleware
 app.use(helmet());
 app.use(cors());
@@ -83,6 +83,9 @@ app.use('/api/finished-goods', finishedGoodsRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/species', speciesRoutes);
 app.use('/api/utils', utilsRoutes);
+// Register organization routes
+const organizationRoutes = require('./modules/Organization/organization.routes');
+app.use('/api/organization', organizationRoutes);
 
 // Error handlers
 app.use((err, req, res, next) => {

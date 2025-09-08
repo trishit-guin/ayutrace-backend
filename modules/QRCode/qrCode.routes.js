@@ -8,12 +8,7 @@ const {
   updateQRCodeHandler,
   deleteQRCodeHandler,
 } = require('./qrCode.controller');
-const { validate } = require('../Auth/middlewares/validate');
-const {
-  generateQRCodeSchema,
-  updateQRCodeSchema,
-  getQRCodesSchema,
-} = require('./qrCode.validation');
+// Validation removed
 
 const router = express.Router();
 
@@ -54,13 +49,41 @@ const router = express.Router();
  *     responses:
  *       201:
  *         description: QR code generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qrCodeId:
+ *                       type: string
+ *                       description: Unique QR code ID
+ *                     entityType:
+ *                       $ref: '#/components/schemas/QREntityType'
+ *                     entityId:
+ *                       type: string
+ *                     qrHash:
+ *                       type: string
+ *                       description: Unique hash for the QR code
+ *                     qrImage:
+ *                       type: string
+ *                       format: data-url
+ *                       description: QR code image as a Data URL
+ *                 message:
+ *                   type: string
+ *                   example: QR code generated successfully
  *       400:
  *         description: Validation error
  *       401:
  *         description: Unauthorized
  */
 // Generate a new QR code
-router.post('/', validate(generateQRCodeSchema), generateQRCodeHandler);
+router.post('/', generateQRCodeHandler);
 
 /**
  * @swagger
@@ -102,7 +125,7 @@ router.post('/', validate(generateQRCodeSchema), generateQRCodeHandler);
  *         description: Unauthorized
  */
 // Get all QR codes with pagination and filters
-router.get('/', validate(getQRCodesSchema), getQRCodesHandler);
+router.get('/', getQRCodesHandler);
 
 /**
  * @swagger
@@ -227,7 +250,7 @@ router.get('/:id', getQRCodeByIdHandler);
  *         description: Unauthorized
  */
 // Update QR code metadata
-router.put('/:id', validate(updateQRCodeSchema), updateQRCodeHandler);
+router.put('/:id', updateQRCodeHandler);
 
 /**
  * @swagger

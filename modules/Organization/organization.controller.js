@@ -3,62 +3,50 @@ const { createOrganization } = require('./organization.service');
 
 /**
  * @swagger
- * components:
- *   schemas:
- *     Organization:
- *       type: object
- *       required:
- *         - organizationId
- *         - name
- *         - type
- *       properties:
- *         organizationId:
- *           type: string
- *           format: uuid
- *           description: Unique organization ID
- *         name:
- *           type: string
- *           description: Organization name
- *         type:
- *           $ref: '#/components/schemas/OrgType'
- *         users:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/User'
- *           description: List of users in this organization
- * /api/organizations:
+ * /api/organization:
  *   post:
  *     summary: Create a new organization
- *     description: Adds a new organization to the system. Requires authentication.
- *     tags: [Organizations]
- *     security:
- *       - bearerAuth: []
+ *     tags:
+ *       - Organization
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - type
  *             properties:
- *               name:
- *                 type: string
- *                 description: Organization name
- *                 example: "Pune Organic Farmers Cooperative"
  *               type:
- *                 $ref: '#/components/schemas/OrgType'
- *           example:
- *             name: "Pune Organic Farmers Cooperative"
- *             type: "FARMER"
+ *                 type: string
+ *                 description: Type of organization
+ *             required:
+ *               - type
  *     responses:
  *       201:
  *         description: Organization created successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Organization'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 organization:
+ *                   type: object
+ *                   properties:
+ *                     organizationId:
+ *                       type: string
+ *                       format: uuid
+ *                       description: Auto-generated organization ID
+ *                     type:
+ *                       type: string
+ *                     users:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           userId:
+ *                             type: string
+ *                             format: uuid
  *       401:
  *         description: Unauthorized - Invalid or missing token
  *         content:
@@ -68,9 +56,23 @@ const { createOrganization } = require('./organization.service');
  */
 async function createOrganizationHandler(req, res) {
   try {
-    const orgData = req.body;
-    const organization = await createOrganization(orgData);
-    return res.status(201).json({ message: 'Organization created successfully', organization });
+    // Only accept 'type' field from request body
+    const { type } = req.body;
+    if (!type) {
+      return res.status(400).json({ message: 'Organization type is required' });
+    }
+    // Check for duplicate organization type
+    const existingOrg = await require('./organization.service').findOrganizationByType(type);
+    if (existingOrg) {
+      return res.status(409).json({ message: 'Organization of this type already exists' });
+    }
+    // Create organization with only 'type' field
+    const organization = await createOrganization({ type });
+    // Return users array (empty on creation)
+    return res.status(201).json({
+      message: 'Organization created successfully',
+      organization: { ...organization, users: [] }
+    });
   } catch (error) {
     console.error('Error creating organization:', error);
     return res.status(500).json({ message: 'Internal server error' });

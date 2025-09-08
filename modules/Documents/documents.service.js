@@ -6,9 +6,11 @@ const prisma = new PrismaClient();
 
 // Upload a new document
 const uploadDocument = async (data) => {
+  // entityType and entityId removed; use only supported fields
+  const prismaData = data;
   return await prisma.document.create({
     data: {
-      ...data,
+      ...prismaData,
       // Let Prisma generate UUID automatically
     },
     include: {
@@ -25,19 +27,14 @@ const uploadDocument = async (data) => {
 };
 
 // Get all documents with pagination and filters
-const getDocuments = async ({ page, limit, documentType, entityType, entityId }) => {
+const getDocuments = async ({ page, limit, documentType }) => {
   const skip = (page - 1) * limit;
   
   const where = {};
   if (documentType) {
     where.documentType = documentType;
   }
-  if (entityType) {
-    where.entityType = entityType;
-  }
-  if (entityId) {
-    where.entityId = entityId;
-  }
+  // entityType and entityId removed from filters
   
   const [documents, total] = await Promise.all([
     prisma.document.findMany({
@@ -88,47 +85,7 @@ const getDocumentById = async (documentId) => {
   });
 };
 
-// Get documents for a specific entity
-const getDocumentsByEntity = async (entityType, entityId) => {
-  const documents = await prisma.document.findMany({
-    where: {
-      entityType,
-      entityId,
-    },
-    include: {
-      uploadedByUser: {
-        select: {
-          userId: true,
-          firstName: true,
-          lastName: true,
-          orgType: true,
-        }
-      }
-    },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  // Group documents by type for better organization
-  const documentsByType = documents.reduce((acc, doc) => {
-    const type = doc.documentType;
-    if (!acc[type]) {
-      acc[type] = [];
-    }
-    acc[type].push(doc);
-    return acc;
-  }, {});
-
-  return {
-    documents,
-    documentsByType,
-    summary: {
-      totalDocuments: documents.length,
-      documentTypes: Object.keys(documentsByType),
-      publicDocuments: documents.filter(doc => doc.isPublic).length,
-      privateDocuments: documents.filter(doc => !doc.isPublic).length,
-    }
-  };
-};
+// getDocumentsByEntity removed; no longer supported by schema
 
 // Update document metadata
 const updateDocument = async (documentId, data) => {
@@ -192,7 +149,7 @@ const deleteDocument = async (documentId) => {
 
 // Get document statistics
 const getDocumentStatistics = async (filters = {}) => {
-  const { startDate, endDate, entityType, documentType } = filters;
+  const { startDate, endDate, documentType } = filters;
   
   const where = {};
   if (startDate && endDate) {
@@ -200,9 +157,6 @@ const getDocumentStatistics = async (filters = {}) => {
       gte: new Date(startDate),
       lte: new Date(endDate),
     };
-  }
-  if (entityType) {
-    where.entityType = entityType;
   }
   if (documentType) {
     where.documentType = documentType;
@@ -223,11 +177,6 @@ const getDocumentStatistics = async (filters = {}) => {
     return acc;
   }, {});
 
-  const documentsByEntityType = documents.reduce((acc, doc) => {
-    acc[doc.entityType] = (acc[doc.entityType] || 0) + 1;
-    return acc;
-  }, {});
-
   const documentsByUploader = documents.reduce((acc, doc) => {
     const orgType = doc.uploadedByUser?.orgType || 'UNKNOWN';
     acc[orgType] = (acc[orgType] || 0) + 1;
@@ -239,7 +188,6 @@ const getDocumentStatistics = async (filters = {}) => {
   return {
     totalDocuments: documents.length,
     documentsByType,
-    documentsByEntityType,
     documentsByUploader,
     totalFileSize,
     publicDocuments: documents.filter(doc => doc.isPublic).length,
@@ -250,7 +198,7 @@ const getDocumentStatistics = async (filters = {}) => {
 
 // Search documents
 const searchDocuments = async (searchTerm, filters = {}) => {
-  const { documentType, entityType, isPublic } = filters;
+  const { documentType, isPublic } = filters;
   
   const where = {
     OR: [
@@ -261,9 +209,6 @@ const searchDocuments = async (searchTerm, filters = {}) => {
 
   if (documentType) {
     where.documentType = documentType;
-  }
-  if (entityType) {
-    where.entityType = entityType;
   }
   if (typeof isPublic === 'boolean') {
     where.isPublic = isPublic;
@@ -289,7 +234,6 @@ module.exports = {
   uploadDocument,
   getDocuments,
   getDocumentById,
-  getDocumentsByEntity,
   updateDocument,
   deleteDocument,
   getDocumentStatistics,

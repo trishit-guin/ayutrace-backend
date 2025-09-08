@@ -1,19 +1,30 @@
 const validate = (schema) => (req, res, next) => {
   try {
-    schema.parse({
-      body: req.body,
-      query: req.query,
-      params: req.params,
-    });
+    if (req.method === 'POST' || req.method === 'PUT') {
+      schema.parse(req.body);
+    } else {
+      schema.parse({
+        body: req.body,
+        query: req.query,
+        params: req.params,
+      });
+    }
     next();
   } catch (e) {
-    console.error('Validation error details:', {
-      name: e.name,
-      message: e.message,
-      errors: e.errors,
-      issues: e.issues,
-    });
-    
+    // Extensive logging for error detection
+    console.error('--- VALIDATION ERROR LOG ---');
+    console.error('Timestamp:', new Date().toISOString());
+    console.error('Request Method:', req.method);
+    console.error('Request URL:', req.originalUrl);
+    console.error('Request Headers:', req.headers);
+    console.error('Request Body:', JSON.stringify(req.body, null, 2));
+    console.error('Request Query:', JSON.stringify(req.query, null, 2));
+    console.error('Request Params:', JSON.stringify(req.params, null, 2));
+    console.error('Error Name:', e.name);
+    console.error('Error Message:', e.message);
+    console.error('Error Stack:', e.stack);
+    if (e.errors) console.error('Error .errors:', JSON.stringify(e.errors, null, 2));
+    if (e.issues) console.error('Error .issues:', JSON.stringify(e.issues, null, 2));
     // Check if it's a Zod validation error (ZodError has issues property)
     if (e.issues && Array.isArray(e.issues)) {
       // Transform Zod errors into a more user-friendly format
@@ -23,7 +34,6 @@ const validate = (schema) => (req, res, next) => {
         code: issue.code || 'validation_error',
         received: issue.received || undefined,
       }));
-
       return res.status(400).json({
         message: 'Validation failed',
         errors: errors,
@@ -37,7 +47,6 @@ const validate = (schema) => (req, res, next) => {
         message: error.message || 'Validation error',
         code: error.code || 'validation_error',
       }));
-
       return res.status(400).json({
         message: 'Validation failed',
         errors: errors,
@@ -58,5 +67,4 @@ const validate = (schema) => (req, res, next) => {
     }
   }
 };
-
 module.exports = { validate };

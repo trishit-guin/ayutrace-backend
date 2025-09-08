@@ -34,8 +34,6 @@ const router = express.Router();
  *             required:
  *               - file
  *               - documentType
- *               - entityType
- *               - entityId
  *             properties:
  *               file:
  *                 type: string
@@ -43,13 +41,7 @@ const router = express.Router();
  *                 description: Document file to upload (max 10MB)
  *               documentType:
  *                 $ref: '#/components/schemas/DocumentType'
- *               entityType:
- *                 $ref: '#/components/schemas/DocumentEntityType'
- *               entityId:
- *                 type: string
- *                 format: uuid
- *                 description: ID of the entity this document relates to
- *                 example: "c1d2e3f4-g5h6-7890-1234-567890abcdef"
+ 
  *               description:
  *                 type: string
  *                 description: Description of the document
@@ -96,11 +88,7 @@ router.post('/', upload.single('file'), uploadDocumentHandler);
  *         schema:
  *           $ref: '#/components/schemas/DocumentType'
  *         description: Filter by document type
- *       - in: query
- *         name: entityType
- *         schema:
- *           $ref: '#/components/schemas/DocumentEntityType'
- *         description: Filter by entity type
+ 
  *     responses:
  *       200:
  *         description: List of documents
@@ -112,37 +100,10 @@ router.get('/', validate(getDocumentsSchema), getDocumentsHandler);
 
 /**
  * @swagger
- * /api/documents/entity/{entityType}/{entityId}:
- *   get:
- *     summary: Get documents for a specific entity
- *     description: Retrieve all documents associated with a specific entity
- *     tags: [Documents]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: entityType
- *         required: true
- *         schema:
- *           $ref: '#/components/schemas/DocumentEntityType'
- *         description: Type of entity
- *       - in: path
- *         name: entityId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID of the entity
- *     responses:
- *       200:
- *         description: Documents for the entity
- *       404:
- *         description: Entity not found
- *       401:
- *         description: Unauthorized
+ 
  */
 // Get documents for a specific entity
-router.get('/entity/:entityType/:entityId', getDocumentsByEntityHandler);
+
 
 /**
  * @swagger

@@ -55,8 +55,6 @@ const upload = multer({
  *             required:
  *               - file
  *               - documentType
- *               - entityType
- *               - entityId
  *             properties:
  *               file:
  *                 type: string
@@ -64,15 +62,28 @@ const upload = multer({
  *               documentType:
  *                 type: string
  *                 enum: [CERTIFICATE, PHOTO, INVOICE, REPORT, TEST_RESULT, LICENSE, OTHER]
- *               entityType:
+ *               collectionEventId:
  *                 type: string
- *                 enum: [COLLECTION_EVENT, RAW_MATERIAL_BATCH, SUPPLY_CHAIN_EVENT, FINISHED_GOOD, USER, ORGANIZATION]
- *               entityId:
+ *                 format: uuid
+ *                 description: Link to a collection event (optional)
+ *               rawMaterialBatchId:
  *                 type: string
+ *                 format: uuid
+ *                 description: Link to a raw material batch (optional)
+ *               supplyChainEventId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Link to a supply chain event (optional)
+ *               finishedGoodId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Link to a finished good (optional)
  *               description:
  *                 type: string
+ *                 description: Document description (optional)
  *               isPublic:
  *                 type: boolean
+ *                 description: Is the document public? (optional)
  *     responses:
  *       201:
  *         description: Document uploaded successfully
@@ -90,8 +101,14 @@ const uploadDocumentHandler = async (req, res) => {
       });
     }
 
+    // Remove entityType and entityId from req.body
+    const {
+      entityType, // ignore
+      entityId, // ignore
+      ...rest
+    } = req.body;
     const documentData = {
-      ...req.body,
+      ...rest,
       fileName: req.file.originalname,
       filePath: req.file.path,
       fileSize: req.file.size,
