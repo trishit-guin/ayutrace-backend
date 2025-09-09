@@ -1,233 +1,236 @@
+
 # AyuTrace Backend
 
-A comprehensive supply chain traceability system for ayurvedic herbs built with Node.js, Express, and Prisma.
+AyuTrace is a robust supply chain traceability system for ayurvedic herbs, built with Node.js, Express, and Prisma ORM. It provides secure, end-to-end tracking from farm to finished product, ensuring quality, authenticity, and compliance.
+
 
 ## 🌿 Overview
 
-AyuTrace is a blockchain-enabled supply chain management system specifically designed for the ayurvedic herb industry. It provides end-to-end traceability from farm to pharmacy, ensuring quality, authenticity, and regulatory compliance.
+AyuTrace enables:
+- End-to-end traceability for ayurvedic herbs and products
+- Role-based authentication and authorization
+- Quality management and document uploads
+- QR code-based tracking
+- Comprehensive RESTful API with Swagger documentation
+
 
 ## 🚀 Features
 
-- **Role-based Authentication**: Secure JWT-based authentication with multiple user roles
-- **Supply Chain Tracking**: Complete traceability from herb collection to final product
-- **Quality Management**: Integrated laboratory testing and certification workflows
-- **Geospatial Support**: Location-based herb collection validation
-- **Blockchain Integration**: Ready for Hyperledger Fabric integration
-- **Comprehensive API**: RESTful API with detailed Swagger documentation
-- **Audit Trails**: Complete audit logging for regulatory compliance
+- **Role-based Authentication** (JWT)
+- **Supply Chain Tracking** (Collection, Processing, Transfer, Finished Goods)
+- **Quality Management** (Document uploads, batch status)
+- **QR Code Integration** (Batch, Product, Event tracking)
+- **Comprehensive REST API** (Swagger & Postman docs)
+- **Audit Logging**
+
 
 ## 🛠️ Technology Stack
 
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: PostgreSQL with PostGIS
-- **ORM**: Prisma
-- **Authentication**: JWT (JSON Web Tokens)
-- **Validation**: Zod
-- **Documentation**: Swagger/OpenAPI 3.0
-- **Password Hashing**: bcryptjs
+- **Node.js** (Express.js)
+- **PostgreSQL** (with PostGIS)
+- **Prisma ORM**
+- **JWT Authentication**
+- **Zod Validation**
+- **Swagger/OpenAPI**
+- **bcryptjs**
+
 
 ## 📋 Prerequisites
 
-- Node.js (v16 or higher)
-- PostgreSQL (v12 or higher) with PostGIS extension
-- npm or yarn package manager
+- Node.js (v16+)
+- PostgreSQL (v12+) with PostGIS
+- npm or yarn
 
-## 🔧 Installation
+
+## 🔧 Quick Start
 
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
    cd ayutrace-backend
    ```
-
 2. **Install dependencies**
    ```bash
    npm install
    ```
-
-3. **Setup environment variables**
+3. **Configure environment**
    ```bash
    cp .env.example .env
-   # Edit .env with your database credentials and JWT secret
+   # Edit .env with your DB credentials and JWT secret
    ```
-
 4. **Setup database**
    ```bash
-   # Create PostgreSQL database and enable PostGIS
    createdb ayutrace
    psql ayutrace -c "CREATE EXTENSION postgis;"
-   ```
-
-5. **Run database migrations**
-   ```bash
    npx prisma migrate dev
-   ```
-
-6. **Generate Prisma client**
-   ```bash
    npx prisma generate
    ```
+5. **Run the server**
+   ```bash
+   npm run dev   # Development
+   npm start     # Production
+   ```
 
-## 🚀 Running the Application
 
-### Development Mode
-```bash
-npm run dev
-```
+API available at: `http://localhost:3000`
 
-### Production Mode
-```bash
-npm start
-```
-
-The API will be available at `http://localhost:3000`
 
 ## 📚 API Documentation
 
-Once the server is running, you can access the interactive Swagger documentation at:
-```
-http://localhost:3000/api-docs
-```
+- **Swagger UI:** [http://localhost:3000/api-docs](http://localhost:3000/api-docs)
+- **Postman Collection:** See `docs/AyuTrace_API.postman_collection.json`
+
 
 ## 🔐 Environment Variables
 
-Create a `.env` file in the root directory with the following variables:
-
+Create a `.env` file in the root directory:
 ```env
-# Database
 DATABASE_URL="postgresql://username:password@localhost:5432/ayutrace"
-
-# JWT Configuration
 JWT_SECRET="your-super-secret-jwt-key"
 JWT_EXPIRES_IN="1d"
-
-# Server Configuration
 PORT=3000
 NODE_ENV="development"
 ```
+
 
 ## 🏗️ Project Structure
 
 ```
 ayutrace-backend/
 ├── config/              # Configuration files
-│   └── swagger.js       # Swagger configuration
-├── docs/                # Documentation
+│   ├── enums.js
+│   └── swagger.js
+├── docs/                # Documentation & API collections
 │   ├── API_DOCUMENTATION.md
-│   └── AyuTrace_API.postman_collection.json
+│   ├── AyuTrace_API.postman_collection.json
+│   └── SWAGGER_IMPLEMENTATION.md
 ├── modules/             # Feature modules
-│   ├── Auth/           # Authentication module
-│   ├── Collection/     # Collection management
-│   ├── Labs/           # Laboratory module
-│   └── Manufacturer/   # Manufacturing module
-├── prisma/             # Database schema and migrations
-│   ├── schema.prisma   # Database schema
-│   └── migrations/     # Migration files
-├── utils/              # Utility functions
-├── server.js           # Application entry point
-└── package.json        # Dependencies and scripts
+│   ├── Auth/            # Authentication
+│   ├── Collection/      # Herb collection
+│   ├── Documents/       # Document uploads
+│   ├── FinishedGoods/   # Finished product management
+│   ├── Organization/    # Organization management
+│   ├── QRCode/          # QR code generation & tracking
+│   ├── RawMaterialBatch/# Raw material batch management
+│   ├── Species/         # Herb species
+│   ├── SupplyChain/     # Supply chain events
+│   └── Utils/           # Utility routes
+├── prisma/              # Database schema & migrations
+│   ├── schema.prisma
+│   └── migrations/
+├── uploads/             # Uploaded files
+├── utils/               # Utility functions
+├── server.js            # App entry point
+└── package.json         # Dependencies & scripts
 ```
+
 
 ## 👥 User Roles
 
-- **FARMER**: Herb collection and batch creation
-- **COOP_ADMIN**: Cooperative management and oversight
-- **PROCESSOR**: Raw material processing operations
-- **LAB_TECH**: Quality testing and certification
-- **MANUFACTURER_QA**: Finished goods production
-- **REGULATOR_ADMIN**: Regulatory oversight and compliance
+- **FARMER**: Herb collection, batch creation
+- **MANUFACTURER**: Finished goods production
+- **LABS**: Quality testing
+- **DISTRIBUTOR**: Distribution and transfer
 
-## 🔗 API Endpoints
 
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - User authentication
-- `GET /api/auth/me` - Get current user profile
+## 🔗 Main API Endpoints
 
-### Collections
-- `POST /api/collections` - Create collection event
-- `GET /api/collections` - List collections
-- `GET /api/collections/:id` - Get collection details
+### Auth
+- `POST /api/auth/register` — Register user
+- `POST /api/auth/login` — Login
+- `GET /api/auth/me` — Get profile
+
+### Collection
+- `POST /api/collection` — Create collection event
+- `GET /api/collection` — List collection events
+- `GET /api/collection/:id` — Get event details
+
+### Documents
+- `POST /api/documents` — Upload document
+- `GET /api/documents/:id` — Get document info
+
+### Finished Goods
+- `POST /api/finishedGoods` — Create finished good
+- `GET /api/finishedGoods` — List finished goods
+
+### Organization
+- `GET /api/organization` — List organizations
+
+### QRCode
+- `POST /api/qrCode/generate` — Generate QR code
+- `GET /api/qrCode/:id` — Get QR code info
+
+### Raw Material Batch
+- `POST /api/rawMaterialBatch` — Create batch
+- `GET /api/rawMaterialBatch` — List batches
+
+### Species
+- `GET /api/species` — List herb species
+
+### Supply Chain
+- `POST /api/supplyChain` — Create supply chain event
+- `GET /api/supplyChain` — List events
+
 
 ## 🧪 Testing
 
-### Using Postman
-Import the provided Postman collection from `docs/AyuTrace_API.postman_collection.json`
+- Import the Postman collection from `docs/AyuTrace_API.postman_collection.json`
+- Health check: `curl http://localhost:3000/`
 
-### Manual Testing
-```bash
-# Health check
-curl http://localhost:3000/
 
-# Register user
-curl -X POST http://localhost:3000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "test@example.com",
-    "password": "password123",
-    "firstName": "John",
-    "lastName": "Doe",
-    "organizationId": "uuid-here",
-    "role": "FARMER"
-  }'
-```
+## 📊 Database Schema (Key Entities)
 
-## 📊 Database Schema
-
-The system uses a comprehensive database schema with the following key entities:
-
-- **Organizations**: Supply chain participants
-- **Users**: Individual user accounts
-- **RawMaterialBatch**: Herb collection batches
-- **SupplyChainEvent**: Processing and transfer events
+- **User**: Individual user accounts
+- **Organization**: Supply chain participants
+- **HerbSpecies**: Herb species info
+- **CollectionEvent**: Herb collection events
+- **RawMaterialBatch**: Herb batches
+- **SupplyChainEvent**: Processing, transfer, storage
 - **FinishedGood**: Final products
-- **AuditLog**: System activity logs
+- **Document**: Uploaded documents
+- **QRCode**: QR code tracking
+
 
 ## 🔒 Security Features
 
-- JWT-based authentication with configurable expiration
-- Password hashing using bcrypt with salt
-- Role-based access control (RBAC)
-- Input validation using Zod schemas
-- SQL injection prevention through Prisma ORM
-- Account status management
+- JWT authentication
+- Password hashing (bcrypt)
+- Role-based access control
+- Input validation (Zod)
+- Prisma ORM for SQL safety
+
 
 ## 🌍 Deployment
 
-### Using Docker (Coming Soon)
-```bash
-docker build -t ayutrace-backend .
-docker run -p 3000:3000 ayutrace-backend
-```
-
 ### Manual Deployment
-1. Set up PostgreSQL with PostGIS on your server
+1. Set up PostgreSQL with PostGIS
 2. Configure environment variables
 3. Run migrations: `npx prisma migrate deploy`
-4. Start the application: `npm start`
+4. Start the app: `npm start`
+
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes
+4. Push to your branch
 5. Open a Pull Request
+
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License — see LICENSE file
+
 
 ## 📞 Support
 
-For support and questions:
-- Email: support@ayutrace.com
-- Documentation: Available at `/api-docs` endpoint
+- Documentation: `/api-docs` endpoint
 - Issues: Create an issue on GitHub
+
 
 ## 🙏 Acknowledgments
 
 - Built for Smart India Hackathon 2025
 - Inspired by the need for transparency in ayurvedic medicine supply chains
-- Uses open-source technologies for maximum compatibility and extensibility
+- Uses open-source technologies for compatibility and extensibility
