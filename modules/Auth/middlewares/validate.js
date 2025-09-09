@@ -1,14 +1,13 @@
 const validate = (schema) => (req, res, next) => {
   try {
-    if (req.method === 'POST' || req.method === 'PUT') {
-      schema.parse(req.body);
-    } else {
-      schema.parse({
-        body: req.body,
-        query: req.query,
-        params: req.params,
-      });
-    }
+    // Create the validation object based on what the schema expects
+    const validationData = {
+      body: req.body,
+      query: req.query,
+      params: req.params,
+    };
+    
+    schema.parse(validationData);
     next();
   } catch (e) {
     // Extensive logging for error detection

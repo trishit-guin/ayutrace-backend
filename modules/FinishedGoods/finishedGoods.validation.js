@@ -37,6 +37,8 @@ const updateFinishedGoodSchema = z.object({
 
 // Schema for getting finished goods with filters
 const getFinishedGoodsSchema = z.object({
+  body: z.object({}).optional(),
+  params: z.object({}).optional(),
   query: z.object({
     page: z.string().transform(Number).pipe(z.number().int().positive()).optional(),
     limit: z.string().transform(Number).pipe(z.number().int().positive().max(100)).optional(),

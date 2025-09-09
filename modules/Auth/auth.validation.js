@@ -18,10 +18,12 @@ const registerUserSchema = z.object({
   }),
 });
 
-// Schema for user login (flat body)
+// Schema for user login
 const loginUserSchema = z.object({
-  email: z.string().email('A valid email is required'),
-  password: z.string().min(1, 'Password is required'),
+  body: z.object({
+    email: z.string().email('A valid email is required'),
+    password: z.string().min(1, 'Password is required'),
+  }),
 });
 
 module.exports = {

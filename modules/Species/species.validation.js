@@ -62,6 +62,8 @@ const updateSpeciesSchema = z.object({
 
 // Schema for getting herb species with filters
 const getSpeciesSchema = z.object({
+  body: z.object({}).optional(),
+  params: z.object({}).optional(),
   query: z.object({
     page: z.string().transform(Number).pipe(z.number().int().positive()).optional(),
     limit: z.string().transform(Number).pipe(z.number().int().positive().max(100)).optional(),
