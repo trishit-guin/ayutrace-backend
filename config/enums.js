@@ -30,7 +30,7 @@ const ENUMS = {
   },
   
   DocumentEntityType: {
-    values: ['RAW_MATERIAL_BATCH', 'FINISHED_GOOD', 'SUPPLY_CHAIN_EVENT', 'COLLECTION_EVENT'],
+    values: ['COLLECTION_EVENT', 'RAW_MATERIAL_BATCH', 'SUPPLY_CHAIN_EVENT', 'FINISHED_GOOD'],
     description: 'Type of entity the document is associated with'
   },
   
@@ -47,11 +47,6 @@ const ENUMS = {
   QuantityUnit: {
     values: ['KG', 'TONNES', 'GRAMS', 'POUNDS', 'PIECES', 'BOTTLES', 'BOXES'],
     description: 'Unit of measurement for quantities'
-  },
-  
-  DocumentEntityType: {
-    values: ['COLLECTION_EVENT', 'RAW_MATERIAL_BATCH', 'SUPPLY_CHAIN_EVENT', 'FINISHED_GOOD'],
-    description: 'Type of entity that a document can be associated with'
   }
 };
 
@@ -61,14 +56,14 @@ const ENUMS = {
 function getSwaggerEnum(enumName) {
   const enumDef = ENUMS[enumName];
   if (!enumDef) {
-    throw new Error(`Enum ${enumName} not found`);
+    console.warn(`⚠️ Enum ${enumName} not found`);
+    return { type: 'string', enum: [], description: `Unknown enum: ${enumName}` };
   }
-  
   return {
     type: 'string',
     enum: enumDef.values,
     description: enumDef.description,
-    example: enumDef.values[0] // Use first value as default example
+    example: enumDef.values[0]
   };
 }
 
@@ -77,11 +72,9 @@ function getSwaggerEnum(enumName) {
  */
 function getAllSwaggerEnums() {
   const components = {};
-  
   Object.keys(ENUMS).forEach(enumName => {
     components[enumName] = getSwaggerEnum(enumName);
   });
-  
   return components;
 }
 

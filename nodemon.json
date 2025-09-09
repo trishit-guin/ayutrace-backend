@@ -1,0 +1,10 @@
+{
+  "ignore": [
+    "uploads/*",
+    "uploads/**",
+    "node_modules/*",
+    "node_modules/**",
+    "swagger-spec.json",
+    "*.log"
+  ]
+}

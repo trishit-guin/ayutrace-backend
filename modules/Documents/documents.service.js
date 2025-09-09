@@ -7,7 +7,12 @@ const prisma = new PrismaClient();
 // Upload a new document
 const uploadDocument = async (data) => {
   // entityType and entityId removed; use only supported fields
-  const prismaData = data;
+  // Ensure isPublic is always boolean
+  // Force isPublic to boolean right before saving
+  const prismaData = {
+    ...data,
+  };
+  prismaData.isPublic = true;
   return await prisma.document.create({
     data: {
       ...prismaData,

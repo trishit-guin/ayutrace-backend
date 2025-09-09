@@ -20,9 +20,10 @@ const router = express.Router();
  * @swagger
  * /api/documents:
  *   post:
- *     summary: Upload a new document
- *     description: Upload a document file and associate it with an entity
- *     tags: [Documents]
+ *     summary: Upload a new document and link to an entity
+ *     description: Upload a document file and associate it with a specific entity (batch, event, etc.)
+ *     tags:
+ *       - Documents
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -34,32 +35,53 @@ const router = express.Router();
  *             required:
  *               - file
  *               - documentType
+ *               - entityType
+ *               - entityId
  *             properties:
  *               file:
  *                 type: string
  *                 format: binary
  *                 description: Document file to upload (max 10MB)
  *               documentType:
- *                 $ref: '#/components/schemas/DocumentType'
- 
+ *                 type: string
+ *                 enum:
+ *                   - CERTIFICATE
+ *                   - PHOTO
+ *                   - INVOICE
+ *                   - REPORT
+ *                   - TEST_RESULT
+ *                   - LICENSE
+ *                   - OTHER
+ *                 description: Type of document being uploaded
+ *               entityType:
+ *                 type: string
+ *                 enum:
+ *                   - COLLECTION_EVENT
+ *                   - RAW_MATERIAL_BATCH
+ *                   - SUPPLY_CHAIN_EVENT
+ *                   - FINISHED_GOOD
+ *                 description: Type of entity to link the document to (required)
+ *                 example: RAW_MATERIAL_BATCH
+ *               entityId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: UUID of the entity to link the document to (required)
+ *                 example: "a1b2c3d4-e5f6-7890-abcd-1234567890ab"
  *               description:
  *                 type: string
  *                 description: Description of the document
  *                 example: "Organic certification for ashwagandha batch #001"
- *               isPublic:
- *                 type: boolean
- *                 description: Whether the document is publicly accessible
- *                 example: true
  *     responses:
  *       201:
  *         description: Document uploaded successfully
  *       400:
  *         description: Validation error or file upload error
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized (missing or invalid token)
  */
 // Upload a new document
-router.post('/', upload.single('file'), uploadDocumentHandler);
+const { authMiddleware } = require('../Auth/middlewares/auth.middleware');
+router.post('/', authMiddleware, upload.single('file'), uploadDocumentHandler);
 
 /**
  * @swagger
@@ -86,9 +108,8 @@ router.post('/', upload.single('file'), uploadDocumentHandler);
  *       - in: query
  *         name: documentType
  *         schema:
- *           $ref: '#/components/schemas/DocumentType'
+ *           type: string
  *         description: Filter by document type
- 
  *     responses:
  *       200:
  *         description: List of documents
@@ -98,11 +119,7 @@ router.post('/', upload.single('file'), uploadDocumentHandler);
 // Get all documents with pagination and filters
 router.get('/', validate(getDocumentsSchema), getDocumentsHandler);
 
-/**
- * @swagger
- 
- */
-// Get documents for a specific entity
+// Get documents for a specific entity - this endpoint might be implemented later
 
 
 /**

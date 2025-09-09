@@ -39,53 +39,49 @@ const upload = multer({
 });
 
 /**
+/**
  * @swagger
  * /api/documents:
  *   post:
- *     summary: Upload a new document
+ *     summary: Upload a new document and link to an entity
  *     tags: [Documents]
  *     consumes:
  *       - multipart/form-data
  *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
  *             required:
  *               - file
  *               - documentType
+ *               - entityType
+ *               - entityId
  *             properties:
  *               file:
  *                 type: string
  *                 format: binary
  *               documentType:
  *                 type: string
- *                 enum: [CERTIFICATE, PHOTO, INVOICE, REPORT, TEST_RESULT, LICENSE, OTHER]
- *               collectionEventId:
+ *                 enum:
+ *                   - CERTIFICATE
+ *                   - PHOTO
+ *                   - INVOICE
+ *                   - REPORT
+ *                   - TEST_RESULT
+ *                   - LICENSE
+ *                   - OTHER
+ *               entityType:
+ *                 type: string
+ *                 enum:
+ *                   - COLLECTION_EVENT
+ *                   - RAW_MATERIAL_BATCH
+ *                   - SUPPLY_CHAIN_EVENT
+ *                   - FINISHED_GOOD
+ *                 description: Type of entity to link the document to (required)
+ *               entityId:
  *                 type: string
  *                 format: uuid
- *                 description: Link to a collection event (optional)
- *               rawMaterialBatchId:
- *                 type: string
- *                 format: uuid
- *                 description: Link to a raw material batch (optional)
- *               supplyChainEventId:
- *                 type: string
- *                 format: uuid
- *                 description: Link to a supply chain event (optional)
- *               finishedGoodId:
- *                 type: string
- *                 format: uuid
- *                 description: Link to a finished good (optional)
+ *                 description: UUID of the entity to link the document to (required)
  *               description:
  *                 type: string
  *                 description: Document description (optional)
- *               isPublic:
- *                 type: boolean
- *                 description: Is the document public? (optional)
- *     responses:
- *       201:
  *         description: Document uploaded successfully
  *       400:
  *         description: Invalid request data
@@ -101,21 +97,48 @@ const uploadDocumentHandler = async (req, res) => {
       });
     }
 
-    // Remove entityType and entityId from req.body
-    const {
-      entityType, // ignore
-      entityId, // ignore
-      ...rest
-    } = req.body;
+  // Accept entityType and entityId for linking
+  const { entityType, entityId, ...rest } = req.body;
+
+    // Validate entityType and entityId
+    if (!entityType || !entityId) {
+      return res.status(400).json({
+        success: false,
+        error: 'entityType and entityId are required',
+      });
+    }
+
+    // Build documentData and link to entity
     const documentData = {
       ...rest,
       fileName: req.file.originalname,
       filePath: req.file.path,
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
-      uploadedBy: req.user?.userId, // From auth middleware if available
+      uploadedBy: req.user.userId, // Always set from JWT
     };
 
+    // Link to entity by setting the correct foreign key
+    switch (entityType) {
+      case 'COLLECTION_EVENT':
+        documentData.collectionEventId = entityId;
+        break;
+      case 'RAW_MATERIAL_BATCH':
+        documentData.rawMaterialBatchId = entityId;
+        break;
+      case 'SUPPLY_CHAIN_EVENT':
+        documentData.supplyChainEventId = entityId;
+        break;
+      case 'FINISHED_GOOD':
+        documentData.finishedGoodId = entityId;
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid entityType provided',
+        });
+    }
+    // Call the service and assign result
     const result = await uploadDocument(documentData);
     res.status(201).json({
       success: true,

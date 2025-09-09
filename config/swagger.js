@@ -1,7 +1,8 @@
 const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const path = require('path');
-const { getAllSwaggerEnums, getSwaggerEnum } = require('./enums');
+const fs = require('fs');
+const { getAllSwaggerEnums } = require('./enums');
 
 const options = {
   definition: {
@@ -30,38 +31,16 @@ const options = {
       },
     ],
     tags: [
-      {
-        name: 'Authentication',
-        description: 'User authentication and authorization operations',
-      },
-      {
-        name: 'Raw Material Batches',
-        description: 'Raw material batch management for herbs collection and tracking',
-      },
-      {
-        name: 'Supply Chain',
-        description: 'Supply chain event tracking throughout the herb processing pipeline',
-      },
-      {
-        name: 'Finished Goods',
-        description: 'Finished product management with composition tracking',
-      },
-      {
-        name: 'Documents',
-        description: 'Document and file management for certificates, photos, and reports',
-      },
-      {
-        name: 'QR Codes',
-        description: 'QR code generation and scanning for product traceability',
-      },
-      {
-        name: 'Species',
-        description: 'Herb species management with conservation and regulatory information',
-      },
-      {
-        name: 'Utilities',
-        description: 'Utility endpoints for testing and development - enum values and sample data',
-      },
+      { name: 'Authentication', description: 'User authentication and authorization operations' },
+      { name: 'Raw Material Batches', description: 'Raw material batch management for herbs collection and tracking' },
+      { name: 'Supply Chain', description: 'Supply chain event tracking throughout the herb processing pipeline' },
+      { name: 'Finished Goods', description: 'Finished product management with composition tracking' },
+      { name: 'Documents', description: 'Document and file management for certificates, photos, and reports' },
+      { name: 'QR Codes', description: 'QR code generation and scanning for product traceability' },
+      { name: 'Species', description: 'Herb species management with conservation and regulatory information' },
+      { name: 'Collection Events', description: 'Herb collection event tracking with quality metrics' },
+      { name: 'Organization', description: 'Organization management operations' },
+      { name: 'Utilities', description: 'Utility endpoints for testing and development - enum values and sample data' },
     ],
     components: {
       securitySchemes: {
@@ -73,70 +52,27 @@ const options = {
         },
       },
       schemas: {
-        Organization: {
+        Error: {
           type: 'object',
           properties: {
-            organizationId: {
-              type: 'string',
-              format: 'uuid',
-              description: 'Unique identifier for the organization',
-              example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
-            },
-            name: {
-              type: 'string',
-              description: 'Legal name of the organization',
-              example: 'Pune Organic Farmers Cooperative',
-            },
-            type: {
-              type: 'string',
-              enum: ['COOPERATIVE', 'PROCESSOR', 'LABORATORY', 'MANUFACTURER', 'REGULATOR'],
-              description: 'Type of organization',
-              example: 'COOPERATIVE',
-            },
-            mspId: {
-              type: 'string',
-              description: 'Hyperledger Fabric MSP ID',
-              example: 'CooperativeMSP',
-            },
-            contactInfo: {
-              type: 'object',
-              description: 'Contact information',
-              example: {
-                phone: '+919876543210',
-                address: '123 Agri St, Pune, Maharashtra',
-                email: 'contact@puneorganic.coop'
-              },
-              nullable: true,
-            },
-            registrationDetails: {
-              type: 'object',
-              description: 'Registration and license details',
-              example: {
-                licenseNumber: 'FSSAI123456',
-                gstin: '27ABCDE1234F1Z5'
-              },
-              nullable: true,
-            },
-            isActive: {
+            success: {
               type: 'boolean',
-              description: 'Organization active status',
-              example: true,
+              example: false,
             },
-            createdAt: {
+            error: {
               type: 'string',
-              format: 'date-time',
-              description: 'Creation timestamp',
-              example: '2025-09-02T12:00:00Z',
+              example: 'Error message',
             },
-            updatedAt: {
+            message: {
               type: 'string',
-              format: 'date-time',
-              description: 'Last update timestamp',
-              example: '2025-09-02T12:00:00Z',
+              example: 'Detailed error message',
             },
           },
-          required: ['organizationId', 'name', 'type', 'mspId'],
         },
+        // Import all enum schemas
+        ...getAllSwaggerEnums(),
+        
+        // User schemas
         User: {
           type: 'object',
           properties: {
@@ -163,8 +99,7 @@ const options = {
               example: 'Patil',
             },
             orgType: {
-              ...getSwaggerEnum('OrgType'),
-              description: 'Organization type the user belongs to',
+              $ref: '#/components/schemas/OrgType',
             },
             blockchainIdentity: {
               type: 'string',
@@ -202,9 +137,36 @@ const options = {
               description: 'Last update timestamp',
               example: '2025-09-03T11:30:00Z',
             },
+            latitude: {
+              type: 'number',
+              format: 'float',
+              description: 'GPS latitude coordinate',
+              example: 17.6868,
+              nullable: true,
+            },
+            longitude: {
+              type: 'number',
+              format: 'float',
+              description: 'GPS longitude coordinate',
+              example: 74.0183,
+              nullable: true,
+            },
+            location: {
+              type: 'string',
+              description: 'Location information',
+              example: 'Satara District, Maharashtra',
+              nullable: true,
+            },
+            organizationId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Organization the user belongs to',
+              example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
+            },
           },
-          required: ['userId', 'email', 'firstName', 'lastName', 'orgType'],
+          required: ['userId', 'email', 'firstName', 'lastName', 'orgType', 'organizationId'],
         },
+        
         UserRegistration: {
           type: 'object',
           properties: {
@@ -238,20 +200,40 @@ const options = {
               description: 'Organization ID the user belongs to',
               example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
             },
-            role: {
-              type: 'string',
-              enum: ['FARMER', 'COOP_ADMIN', 'PROCESSOR', 'LAB_TECH', 'MANUFACTURER_QA', 'REGULATOR_ADMIN'],
-              description: 'User role in the organization',
-              example: 'FARMER',
+            orgType: {
+              $ref: '#/components/schemas/OrgType',
             },
             blockchainIdentity: {
               type: 'string',
               description: 'Optional blockchain identity',
               example: 'user1@cooperative.prakritichain.com',
             },
+            phone: {
+              type: 'string',
+              description: 'Optional phone number',
+              example: '+919876543210',
+            },
+            location: {
+              type: 'string',
+              description: 'Location information',
+              example: 'Satara District, Maharashtra',
+            },
+            latitude: {
+              type: 'number',
+              format: 'float',
+              description: 'GPS latitude coordinate',
+              example: 17.6868,
+            },
+            longitude: {
+              type: 'number',
+              format: 'float',
+              description: 'GPS longitude coordinate',
+              example: 74.0183,
+            },
           },
-          required: ['email', 'password', 'firstName', 'lastName', 'organizationId', 'role'],
+          required: ['email', 'password', 'firstName', 'lastName', 'organizationId', 'orgType'],
         },
+        
         UserLogin: {
           type: 'object',
           properties: {
@@ -269,82 +251,646 @@ const options = {
           },
           required: ['email', 'password'],
         },
-        LoginResponse: {
+        
+        // Organization schemas
+        Organization: {
           type: 'object',
           properties: {
+            organizationId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier for the organization',
+              example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
+            },
+            type: {
+              $ref: '#/components/schemas/OrgType',
+            },
+          },
+          required: ['organizationId', 'type'],
+        },
+        
+        // Raw Material Batch schemas
+        RawMaterialBatch: {
+          type: 'object',
+          properties: {
+            batchId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier for the batch',
+              example: 'c1d2e3f4-g5h6-7890-1234-567890abcdef',
+            },
+            herbName: {
+              type: 'string',
+              description: 'Name of the herb',
+              example: 'Ashwagandha',
+            },
+            scientificName: {
+              type: 'string',
+              description: 'Scientific name of the herb',
+              example: 'Withania somnifera',
+              nullable: true,
+            },
+            quantity: {
+              type: 'number',
+              description: 'Quantity of the batch',
+              example: 100.5,
+            },
+            unit: {
+              $ref: '#/components/schemas/QuantityUnit',
+            },
+            status: {
+              $ref: '#/components/schemas/RawMaterialBatchStatus',
+            },
+            description: {
+              type: 'string',
+              description: 'Additional description',
+              example: 'High quality organic ashwagandha roots',
+              nullable: true,
+            },
+            notes: {
+              type: 'string',
+              description: 'Any additional notes',
+              example: 'Harvested during optimal season',
+              nullable: true,
+            },
+            currentOwnerId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID of the current owner',
+              nullable: true,
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+          },
+          required: ['batchId', 'herbName', 'quantity', 'unit', 'status'],
+        },
+        
+        // Supply Chain Event schemas
+        SupplyChainEvent: {
+          type: 'object',
+          properties: {
+            eventId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier for the event',
+              example: 'd1e2f3g4-h5i6-7890-1234-567890abcdef',
+            },
+            eventType: {
+              $ref: '#/components/schemas/SupplyChainEventType',
+            },
+            timestamp: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Event timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+            handlerId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID of the person handling the event',
+              example: 'b1c2d3e4-f5g6-7890-1234-567890abcdef',
+            },
+            fromLocationId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Source location organization ID',
+              example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
+            },
+            toLocationId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Destination location organization ID',
+              example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
+            },
+            rawMaterialBatchId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Associated raw material batch ID',
+              example: 'c1d2e3f4-g5h6-7890-1234-567890abcdef',
+              nullable: true,
+            },
+            finishedGoodId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Associated finished good ID',
+              example: 'e1f2g3h4-i5j6-7890-1234-567890abcdef',
+              nullable: true,
+            },
+            notes: {
+              type: 'string',
+              description: 'Additional notes about the event',
+              example: 'Quality testing completed successfully',
+              nullable: true,
+            },
+            custody: {
+              type: 'object',
+              description: 'Custody transfer information',
+              nullable: true,
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+          },
+          required: ['eventId', 'eventType', 'timestamp', 'handlerId', 'fromLocationId', 'toLocationId'],
+        },
+        
+        // Finished Good schemas
+        FinishedGood: {
+          type: 'object',
+          properties: {
+            productId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier for the finished good',
+              example: 'e1f2g3h4-i5j6-7890-1234-567890abcdef',
+            },
+            productName: {
+              type: 'string',
+              description: 'Name of the finished product',
+              example: 'Ashwagandha Churna',
+            },
+            productType: {
+              $ref: '#/components/schemas/FinishedGoodProductType',
+            },
+            quantity: {
+              type: 'number',
+              description: 'Quantity produced',
+              example: 50.0,
+            },
+            unit: {
+              $ref: '#/components/schemas/QuantityUnit',
+            },
+            manufacturerId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID of the manufacturer',
+              example: 'b1c2d3e4-f5g6-7890-1234-567890abcdef',
+            },
+            description: {
+              type: 'string',
+              description: 'Product description',
+              example: 'Pure Ashwagandha powder for wellness',
+              nullable: true,
+            },
+            batchNumber: {
+              type: 'string',
+              description: 'Batch number for the product',
+              example: 'FG-2025-001',
+              nullable: true,
+            },
+            expiryDate: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Product expiry date',
+              example: '2027-09-05T08:00:00Z',
+              nullable: true,
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+          },
+          required: ['productId', 'productName', 'productType', 'quantity', 'unit', 'manufacturerId'],
+        },
+        
+        // Document schemas
+        Document: {
+          type: 'object',
+          properties: {
+            documentId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier for the document',
+              example: 'f1g2h3i4-j5k6-7890-1234-567890abcdef',
+            },
+            fileName: {
+              type: 'string',
+              description: 'Original file name',
+              example: 'organic_certificate.pdf',
+              nullable: true,
+            },
+            filePath: {
+              type: 'string',
+              description: 'File storage path',
+              example: '/uploads/documents/f1g2h3i4-j5k6-7890-organic_certificate.pdf',
+            },
+            fileSize: {
+              type: 'integer',
+              description: 'File size in bytes',
+              example: 2048576,
+            },
+            mimeType: {
+              type: 'string',
+              description: 'MIME type of the file',
+              example: 'application/pdf',
+            },
+            documentType: {
+              $ref: '#/components/schemas/DocumentType',
+            },
+            description: {
+              type: 'string',
+              description: 'Description of the document',
+              example: 'Organic certification for batch',
+              nullable: true,
+            },
+            uploadedBy: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID of the user who uploaded the document',
+              nullable: true,
+            },
+            isPublic: {
+              type: 'boolean',
+              description: 'Whether the document is publicly accessible',
+              example: false,
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Upload timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+            collectionEventId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Associated collection event ID',
+              nullable: true,
+            },
+            rawMaterialBatchId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Associated raw material batch ID',
+              nullable: true,
+            },
+            supplyChainEventId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Associated supply chain event ID',
+              nullable: true,
+            },
+            finishedGoodId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Associated finished good ID',
+              nullable: true,
+            },
+          },
+          required: ['documentId', 'filePath', 'fileSize', 'mimeType', 'documentType'],
+        },
+        
+        // QR Code schemas
+        QRCode: {
+          type: 'object',
+          properties: {
+            qrCodeId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier for the QR code',
+              example: 'g1h2i3j4-k5l6-7890-1234-567890abcdef',
+            },
+            qrHash: {
+              type: 'string',
+              description: 'Unique hash for the QR code',
+              example: 'abc123def456ghi789jkl012mno345pqr678',
+            },
+            entityType: {
+              $ref: '#/components/schemas/QREntityType',
+            },
+            entityId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID of the entity',
+              example: 'c1d2e3f4-g5h6-7890-1234-567890abcdef',
+            },
+            generatedBy: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID of the user who generated the QR code',
+              nullable: true,
+            },
+            customData: {
+              type: 'object',
+              description: 'Additional custom data for the QR code',
+              example: { batchInfo: 'Premium Ashwagandha', harvestDate: '2025-08-15' },
+              nullable: true,
+            },
+            scanCount: {
+              type: 'integer',
+              description: 'Number of times the QR code has been scanned',
+              example: 15,
+            },
+            lastScannedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last scan timestamp',
+              example: '2025-09-05T14:30:00Z',
+              nullable: true,
+            },
+            isActive: {
+              type: 'boolean',
+              description: 'Whether the QR code is active',
+              example: true,
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+          },
+          required: ['qrCodeId', 'qrHash', 'entityType', 'entityId'],
+        },
+        
+        // Species schemas
+        HerbSpecies: {
+          type: 'object',
+          properties: {
+            speciesId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier for the species',
+              example: 'h1i2j3k4-l5m6-7890-1234-567890abcdef',
+            },
+            commonName: {
+              type: 'string',
+              description: 'Common name of the herb',
+              example: 'Ashwagandha',
+            },
+            scientificName: {
+              type: 'string',
+              description: 'Scientific name of the herb',
+              example: 'Withania somnifera',
+            },
+            family: {
+              type: 'string',
+              description: 'Plant family',
+              example: 'Solanaceae',
+              nullable: true,
+            },
+            description: {
+              type: 'string',
+              description: 'Description of the herb species',
+              example: 'A medicinal herb known for its adaptogenic properties',
+              nullable: true,
+            },
+            medicinalUses: {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+              description: 'Medicinal uses of the herb',
+              example: ['Stress relief', 'Immune support', 'Energy enhancement'],
+            },
+            nativeRegions: {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+              description: 'Native regions where the herb grows',
+              example: ['India', 'Nepal', 'Sri Lanka'],
+            },
+            harvestingSeason: {
+              type: 'string',
+              description: 'Optimal harvesting season',
+              example: 'Winter (December to February)',
+              nullable: true,
+            },
+            partsUsed: {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+              description: 'Parts of the plant used medicinally',
+              example: ['Root', 'Leaves'],
+            },
+            conservationStatus: {
+              $ref: '#/components/schemas/ConservationStatus',
+            },
+            regulatoryInfo: {
+              type: 'object',
+              description: 'Regulatory information',
+              nullable: true,
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+          },
+          required: ['speciesId', 'commonName', 'scientificName'],
+        },
+        
+        // Collection Event schemas
+        CollectionEvent: {
+          type: 'object',
+          properties: {
+            eventId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier for the collection event',
+              example: 'i1j2k3l4-m5n6-7890-1234-567890abcdef',
+            },
+            collectorId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID of the collector',
+              example: 'b1c2d3e4-f5g6-7890-1234-567890abcdef',
+            },
+            farmerId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID of the farmer',
+              example: 'b1c2d3e4-f5g6-7890-1234-567890abcdef',
+              nullable: true,
+            },
+            herbSpeciesId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID of the herb species',
+              example: 'h1i2j3k4-l5m6-7890-1234-567890abcdef',
+              nullable: true,
+            },
+            collectionDate: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Date of collection',
+              example: '2025-09-05T08:00:00Z',
+            },
+            location: {
+              type: 'string',
+              description: 'Collection location',
+              example: 'Satara District, Maharashtra',
+              nullable: true,
+            },
+            latitude: {
+              type: 'number',
+              format: 'float',
+              description: 'GPS latitude coordinate',
+              example: 17.6868,
+              nullable: true,
+            },
+            longitude: {
+              type: 'number',
+              format: 'float',
+              description: 'GPS longitude coordinate',
+              example: 74.0183,
+              nullable: true,
+            },
+            quantity: {
+              type: 'number',
+              description: 'Quantity collected',
+              example: 25.5,
+              nullable: true,
+            },
+            unit: {
+              type: 'string',
+              description: 'Unit of measurement',
+              example: 'KG',
+              nullable: true,
+            },
+            qualityNotes: {
+              type: 'string',
+              description: 'Quality assessment notes',
+              example: 'Good quality, mature roots',
+              nullable: true,
+            },
+            notes: {
+              type: 'string',
+              description: 'Additional notes',
+              example: 'Collected during optimal weather conditions',
+              nullable: true,
+            },
+            batchId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Associated batch ID',
+              example: 'c1d2e3f4-g5h6-7890-1234-567890abcdef',
+              nullable: true,
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp',
+              example: '2025-09-05T10:30:00Z',
+            },
+          },
+          required: ['eventId', 'collectorId', 'collectionDate'],
+        },
+        
+        // Response schemas
+        ApiResponse: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: true,
+            },
             message: {
               type: 'string',
-              description: 'Success message',
-              example: 'Login successful',
+              example: 'Operation completed successfully',
             },
-            token: {
-              type: 'string',
-              description: 'JWT authentication token',
-              example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-            },
-            timestamp: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Response timestamp',
-              example: '2025-09-03T12:00:00Z',
-            },
-          },
-        },
-        RegistrationResponse: {
-          type: 'object',
-          properties: {
-            message: {
-              type: 'string',
-              description: 'Success message',
-              example: 'User created successfully',
-            },
-            user: {
-              $ref: '#/components/schemas/User',
+            data: {
+              type: 'object',
+              description: 'Response data',
+              nullable: true,
             },
             timestamp: {
               type: 'string',
               format: 'date-time',
-              description: 'Response timestamp',
               example: '2025-09-03T12:00:00Z',
             },
           },
         },
-        MeResponse: {
-          type: 'object',
-          properties: {
-            user: {
-              $ref: '#/components/schemas/User',
-            },
-            timestamp: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Response timestamp',
-              example: '2025-09-03T12:00:00Z',
-            },
-          },
-        },
+        
         ErrorResponse: {
           type: 'object',
           properties: {
+            success: {
+              type: 'boolean',
+              example: false,
+            },
+            error: {
+              type: 'string',
+              example: 'Validation error',
+            },
             message: {
               type: 'string',
-              description: 'Error message',
-              example: 'Invalid email or password',
+              example: 'Required field is missing',
+            },
+            details: {
+              type: 'object',
+              description: 'Additional error details',
+              nullable: true,
             },
             timestamp: {
               type: 'string',
               format: 'date-time',
-              description: 'Error timestamp',
               example: '2025-09-03T12:00:00Z',
             },
           },
         },
+        
         ValidationError: {
           type: 'object',
           properties: {
+            success: {
+              type: 'boolean',
+              example: false,
+            },
             message: {
               type: 'string',
-              description: 'Validation error message',
               example: 'Validation failed',
             },
             errors: {
@@ -373,429 +919,12 @@ const options = {
             timestamp: {
               type: 'string',
               format: 'date-time',
-              description: 'Error timestamp',
               example: '2025-09-03T12:00:00Z',
             },
           },
         },
-        HealthCheck: {
-          type: 'object',
-          properties: {
-            message: {
-              type: 'string',
-              description: 'Health status message',
-              example: 'AyuTrace Backend API is running',
-            },
-            timestamp: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Response timestamp',
-              example: '2025-09-03T12:00:00Z',
-            },
-            version: {
-              type: 'string',
-              description: 'API version',
-              example: '1.0.0',
-            },
-          },
-        },
-        RawMaterialBatch: {
-          type: 'object',
-          properties: {
-            id: {
-              type: 'string',
-              format: 'uuid',
-              description: 'Unique identifier for the batch',
-              example: 'c1d2e3f4-g5h6-7890-1234-567890abcdef',
-            },
-            herbName: {
-              type: 'string',
-              description: 'Name of the herb',
-              example: 'Ashwagandha',
-            },
-            scientificName: {
-              type: 'string',
-              description: 'Scientific name of the herb',
-              example: 'Withania somnifera',
-            },
-            quantity: {
-              type: 'number',
-              description: 'Quantity of the batch',
-              example: 100.5,
-            },
-            unit: {
-              ...getSwaggerEnum('QuantityUnit'),
-              description: 'Unit of measurement',
-            },
-            status: {
-              ...getSwaggerEnum('RawMaterialBatchStatus'),
-              description: 'Current status of the batch',
-            },
-            description: {
-              type: 'string',
-              description: 'Additional description',
-              example: 'High quality organic ashwagandha roots',
-            },
-            notes: {
-              type: 'string',
-              description: 'Any additional notes',
-              example: 'Harvested during optimal season',
-            },
-            currentOwnerId: {
-              type: 'string',
-              format: 'uuid',
-              description: 'ID of the current owner',
-            },
-            createdAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Creation timestamp',
-              example: '2025-09-05T10:30:00Z',
-            },
-            updatedAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Last update timestamp',
-              example: '2025-09-05T10:30:00Z',
-            },
-          },
-          required: ['herbName', 'quantity', 'unit'],
-        },
-        SupplyChainEvent: {
-          type: 'object',
-          properties: {
-            id: {
-              type: 'string',
-              format: 'uuid',
-              description: 'Unique identifier for the event',
-              example: 'd1e2f3g4-h5i6-7890-1234-567890abcdef',
-            },
-            eventType: {
-              ...getSwaggerEnum('SupplyChainEventType'),
-              description: 'Type of supply chain event',
-            },
-            eventDate: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Date and time when the event occurred',
-              example: '2025-09-05T10:30:00Z',
-            },
-            batchId: {
-              type: 'string',
-              format: 'uuid',
-              description: 'Associated batch ID',
-              nullable: true,
-            },
-            finishedGoodId: {
-              type: 'string',
-              format: 'uuid',
-              description: 'Associated finished good ID',
-              nullable: true,
-            },
-            handlerId: {
-              type: 'string',
-              format: 'uuid',
-              description: 'ID of the person handling the event',
-            },
-            locationLat: {
-              type: 'number',
-              description: 'Latitude coordinate of the event location',
-              example: 19.076,
-            },
-            locationLng: {
-              type: 'number',
-              description: 'Longitude coordinate of the event location',
-              example: 72.8777,
-            },
-            details: {
-              type: 'string',
-              description: 'Additional details about the event',
-              example: 'Herbs collected from organic farm',
-            },
-            notes: {
-              type: 'string',
-              description: 'Any additional notes',
-              example: 'Good quality harvest',
-            },
-            createdAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Creation timestamp',
-              example: '2025-09-05T10:30:00Z',
-            },
-          },
-          required: ['eventType', 'eventDate', 'handlerId', 'locationLat', 'locationLng'],
-        },
-        FinishedGood: {
-          type: 'object',
-          properties: {
-            id: {
-              type: 'string',
-              format: 'uuid',
-              description: 'Unique identifier for the finished good',
-              example: 'e1f2g3h4-i5j6-7890-1234-567890abcdef',
-            },
-            productName: {
-              type: 'string',
-              description: 'Name of the finished product',
-              example: 'Ashwagandha Churna',
-            },
-            productType: {
-              ...getSwaggerEnum('FinishedGoodProductType'),
-              description: 'Type of the product',
-            },
-            description: {
-              type: 'string',
-              description: 'Product description',
-              example: 'Pure Ashwagandha powder for wellness',
-            },
-            quantity: {
-              type: 'number',
-              description: 'Quantity produced',
-              example: 50.0,
-            },
-            unit: {
-              ...getSwaggerEnum('QuantityUnit'),
-              description: 'Unit of measurement',
-            },
-            batchNumber: {
-              type: 'string',
-              description: 'Batch number for the product',
-              example: 'FG-2025-001',
-            },
-            manufacturingDate: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Date of manufacturing',
-              example: '2025-09-05T08:00:00Z',
-            },
-            expiryDate: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Product expiry date',
-              example: '2027-09-05T08:00:00Z',
-            },
-            notes: {
-              type: 'string',
-              description: 'Additional notes',
-            },
-            manufacturerId: {
-              type: 'string',
-              format: 'uuid',
-              description: 'ID of the manufacturer',
-            },
-            createdAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Creation timestamp',
-              example: '2025-09-05T10:30:00Z',
-            },
-          },
-          required: ['productName', 'productType', 'quantity', 'unit'],
-        },
-        Document: {
-          type: 'object',
-          properties: {
-            id: {
-              type: 'string',
-              format: 'uuid',
-              description: 'Unique identifier for the document',
-              example: 'f1g2h3i4-j5k6-7890-1234-567890abcdef',
-            },
-            fileName: {
-              type: 'string',
-              description: 'Original file name',
-              example: 'organic_certificate.pdf',
-            },
-            filePath: {
-              type: 'string',
-              description: 'File storage path',
-              example: '/uploads/documents/f1g2h3i4-j5k6-7890-organic_certificate.pdf',
-            },
-            fileSize: {
-              type: 'integer',
-              description: 'File size in bytes',
-              example: 2048576,
-            },
-            mimeType: {
-              type: 'string',
-              description: 'MIME type of the file',
-              example: 'application/pdf',
-            },
-            documentType: {
-              ...getSwaggerEnum('DocumentType'),
-              description: 'Type of document',
-            },
-            entityType: {
-              ...getSwaggerEnum('DocumentEntityType'),
-              description: 'Type of entity the document is associated with',
-            },
-            entityId: {
-              type: 'string',
-              format: 'uuid',
-              description: 'ID of the entity',
-            },
-            description: {
-              type: 'string',
-              description: 'Description of the document',
-              example: 'Organic certification for batch',
-            },
-            notes: {
-              type: 'string',
-              description: 'Additional notes',
-            },
-            uploadedBy: {
-              type: 'string',
-              format: 'uuid',
-              description: 'ID of the user who uploaded the document',
-            },
-            createdAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Upload timestamp',
-              example: '2025-09-05T10:30:00Z',
-            },
-          },
-          required: ['fileName', 'documentType', 'entityType', 'entityId'],
-        },
-        QRCode: {
-          type: 'object',
-          properties: {
-            id: {
-              type: 'string',
-              format: 'uuid',
-              description: 'Unique identifier for the QR code',
-              example: 'g1h2i3j4-k5l6-7890-1234-567890abcdef',
-            },
-            qrHash: {
-              type: 'string',
-              description: 'Unique hash for the QR code',
-              example: 'abc123def456ghi789jkl012mno345pqr678',
-            },
-            entityType: {
-              ...getSwaggerEnum('QREntityType'),
-              description: 'Type of entity the QR code is for',
-            },
-            entityId: {
-              type: 'string',
-              format: 'uuid',
-              description: 'ID of the entity',
-            },
-            purpose: {
-              type: 'string',
-              description: 'Purpose of the QR code',
-              example: 'Product traceability',
-            },
-            notes: {
-              type: 'string',
-              description: 'Additional notes',
-            },
-            scanCount: {
-              type: 'integer',
-              description: 'Number of times the QR code has been scanned',
-              example: 15,
-            },
-            lastScannedAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Last scan timestamp',
-              example: '2025-09-05T14:30:00Z',
-              nullable: true,
-            },
-            createdBy: {
-              type: 'string',
-              format: 'uuid',
-              description: 'ID of the user who created the QR code',
-            },
-            createdAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Creation timestamp',
-              example: '2025-09-05T10:30:00Z',
-            },
-          },
-          required: ['entityType', 'entityId'],
-        },
-        Species: {
-          type: 'object',
-          properties: {
-            id: {
-              type: 'string',
-              format: 'uuid',
-              description: 'Unique identifier for the species',
-              example: 'h1i2j3k4-l5m6-7890-1234-567890abcdef',
-            },
-            commonName: {
-              type: 'string',
-              description: 'Common name of the herb',
-              example: 'Ashwagandha',
-            },
-            scientificName: {
-              type: 'string',
-              description: 'Scientific name of the herb',
-              example: 'Withania somnifera',
-            },
-            description: {
-              type: 'string',
-              description: 'Description of the herb species',
-              example: 'A medicinal herb known for its adaptogenic properties',
-            },
-            conservationStatus: {
-              ...getSwaggerEnum('ConservationStatus'),
-              description: 'Conservation status of the species',
-            },
-            nativeRegion: {
-              type: 'string',
-              description: 'Native region of the species',
-              example: 'India, Middle East, Africa',
-            },
-            regulatoryStatus: {
-              type: 'string',
-              description: 'Regulatory status information',
-              example: 'Generally recognized as safe (GRAS)',
-            },
-            notes: {
-              type: 'string',
-              description: 'Additional notes',
-            },
-            createdAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Creation timestamp',
-              example: '2025-09-05T10:30:00Z',
-            },
-            updatedAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'Last update timestamp',
-              example: '2025-09-05T10:30:00Z',
-            },
-          },
-          required: ['commonName', 'scientificName', 'conservationStatus', 'nativeRegion'],
-        },
-        Error: {
-          type: 'object',
-          properties: {
-            success: {
-              type: 'boolean',
-              example: false,
-            },
-            error: {
-              type: 'string',
-              example: 'Validation error',
-            },
-            message: {
-              type: 'string',
-              example: 'Required field is missing',
-            },
-            details: {
-              type: 'object',
-              description: 'Additional error details',
-              nullable: true,
-            },
-          },
-        },
-        Success: {
+        
+        LoginResponse: {
           type: 'object',
           properties: {
             success: {
@@ -804,38 +933,108 @@ const options = {
             },
             message: {
               type: 'string',
-              example: 'Operation completed successfully',
+              example: 'Login successful',
             },
             data: {
               type: 'object',
-              description: 'Response data',
-              nullable: true,
+              properties: {
+                user: {
+                  $ref: '#/components/schemas/User',
+                },
+                token: {
+                  type: 'string',
+                  description: 'JWT authentication token',
+                  example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                },
+              },
+            },
+            timestamp: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-09-03T12:00:00Z',
             },
           },
         },
         
-        // Enum Components for Dynamic Dropdown Testing
-        ...getAllSwaggerEnums(),
+        HealthCheck: {
+          type: 'object',
+          properties: {
+            status: {
+              type: 'string',
+              example: 'OK',
+            },
+            message: {
+              type: 'string',
+              example: 'AyuTrace Backend Server is running',
+            },
+            timestamp: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-09-03T12:00:00Z',
+            },
+            version: {
+              type: 'string',
+              example: '1.0.0',
+            },
+          },
+        },
       },
     },
   },
   apis: [
-    path.join(__dirname, '../modules/Auth/auth.routes.js'),
-    path.join(__dirname, '../modules/Collection/collection.routes.js'),
-    path.join(__dirname, '../modules/RawMaterialBatch/rawMaterialBatch.routes.js'),
-    path.join(__dirname, '../modules/SupplyChain/supplyChain.routes.js'),
-    path.join(__dirname, '../modules/FinishedGoods/finishedGoods.routes.js'),
-    path.join(__dirname, '../modules/Documents/documents.routes.js'),
-    path.join(__dirname, '../modules/QRCode/qrCode.routes.js'),
-    path.join(__dirname, '../modules/Species/species.routes.js'),
-    path.join(__dirname, '../modules/Utils/utils.routes.js'),
-    path.join(__dirname, '../modules/Organization/organization.controller.js'),
-    path.join(__dirname, '../modules/Organization/organization.routes.js'),
-    path.join(__dirname, '../server.js'),
+  './modules/Auth/auth.routes.js',
+  './modules/Collection/collection.routes.js',
+  './modules/RawMaterialBatch/rawMaterialBatch.routes.js',
+  './modules/SupplyChain/supplyChain.routes.js',
+  './modules/FinishedGoods/finishedGoods.routes.js',
+  './modules/Documents/documents.routes.js',
+  './modules/QRCode/qrCode.routes.js',
+  './modules/Species/species.routes.js',
+  './modules/Organization/organization.routes.js',
+  './modules/Organization/organization.controller.js',
+  './modules/Utils/utils.routes.js',
   ],
 };
 
-const specs = swaggerJSDoc(options);
+let specs;
+try {
+  console.log('🔄 Building Swagger documentation...');
+  specs = swaggerJSDoc(options);
+  
+  // Write the full spec to a file for debugging
+  fs.writeFileSync(
+    path.join(__dirname, '../swagger-spec.json'), 
+    JSON.stringify(specs, null, 2), 
+    'utf8'
+  );
+  
+  console.log('✅ Swagger documentation built successfully');
+  console.log('📄 Full spec written to swagger-spec.json');
+} catch (err) {
+  console.error('❌ Swagger build failed:', err.message);
+  
+  const errorLog = [
+    '❌ Swagger build failed',
+    '',
+    'Error:',
+    err.stack || err.message,
+    '',
+    'Options definition:',
+    JSON.stringify(options.definition, null, 2),
+    '',
+    'API files:',
+    options.apis.join('\n'),
+  ].join('\n');
+  
+  fs.writeFileSync(
+    path.join(__dirname, '../swagger-error.log'), 
+    errorLog, 
+    'utf8'
+  );
+  
+  console.log('📝 Error details written to swagger-error.log');
+  process.exit(1);
+}
 
 module.exports = {
   specs,
