@@ -79,4 +79,65 @@ async function createOrganizationHandler(req, res) {
   }
 }
 
-module.exports = { createOrganizationHandler };
+
+/**
+ * @swagger
+ * /api/organization/by-type/{type}:
+ *   get:
+ *     summary: Get organization ID by type
+ *     description: Returns the organizationId for the given organization type
+ *     tags:
+ *       - Organization
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Type of organization (e.g., FARMER, MANUFACTURER, LABS, DISTRIBUTOR)
+ *     responses:
+ *       200:
+ *         description: Organization found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 organizationId:
+ *                   type: string
+ *                   format: uuid
+ *                   example: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+ *                 type:
+ *                   type: string
+ *                   example: "FARMER"
+ *       404:
+ *         description: Organization not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Organization not found
+ */
+async function getOrganizationIdByTypeHandler(req, res) {
+  try {
+    const { type } = req.params;
+    // Validate org type
+    const validTypes = ['FARMER', 'MANUFACTURER', 'LABS', 'DISTRIBUTOR' , 'ADMIN'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ message: 'Invalid organization type', validTypes });
+    }
+    const org = await require('./organization.service').findOrganizationByType(type);
+    if (!org) {
+      return res.status(404).json({ message: 'Organization not found', type });
+    }
+    return res.status(200).json({ organizationId: org.organizationId, type: org.type });
+  } catch (error) {
+    console.error('Error fetching organization by type:', error);
+    return res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+}
+
+module.exports = { createOrganizationHandler, getOrganizationIdByTypeHandler };

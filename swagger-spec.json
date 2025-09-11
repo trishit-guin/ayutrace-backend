@@ -3722,6 +3722,65 @@
         }
       }
     },
+    "/api/organization/by-type/{type}": {
+      "get": {
+        "summary": "Get organization ID by type",
+        "description": "Returns the organizationId for the given organization type",
+        "tags": [
+          "Organization"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Type of organization (e.g., FARMER, MANUFACTURER, LABS, DISTRIBUTOR)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organization found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "organizationId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "example": "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                    },
+                    "type": {
+                      "type": "string",
+                      "example": "FARMER"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organization not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Organization not found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/utils/enums": {
       "get": {
         "summary": "Get all available enum values for testing",

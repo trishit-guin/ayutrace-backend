@@ -228,6 +228,7 @@ enum OrgType {
   MANUFACTURER
   LABS
   DISTRIBUTOR
+  ADMIN
 }
 
 enum RawMaterialBatchStatus {
