@@ -15,6 +15,7 @@ const {
 } = require('./finishedGoods.validation');
 
 const router = express.Router();
+const { authMiddleware } = require('../Auth/middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -148,6 +149,23 @@ router.post('/', validate(createFinishedGoodSchema), createFinishedGoodHandler);
  */
 // Get all finished goods with pagination and filters
 router.get('/', validate(getFinishedGoodsSchema), getFinishedGoodsHandler);
+
+/**
+ * @swagger
+ * /api/finished-goods/by-user:
+ *   get:
+ *     summary: Get finished goods for the logged-in user
+ *     description: Retrieve finished goods created by the authenticated user (manufacturer)
+ *     tags: [Finished Goods]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of finished goods for the user
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/by-user', authMiddleware, require('./finishedGoods.controller').getFinishedGoodsByUserHandler);
 
 /**
  * @swagger

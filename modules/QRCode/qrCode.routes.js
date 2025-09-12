@@ -14,6 +14,33 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /api/qr-codes/image/{entityId}:
+ *   get:
+ *     summary: Get QR code image by entity ID
+ *     description: Returns the QR code image for the given entity ID
+ *     tags: [QR Codes]
+ *     parameters:
+ *       - in: path
+ *         name: entityId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The entity ID for which to fetch the QR code image
+ *     responses:
+ *       200:
+ *         description: QR code image returned successfully
+ *         content:
+ *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: QR code not found for entity
+ */
+router.get('/image/:entityId', require('./qrCode.controller').getQRCodeImageByEntityIdHandler);
+
+/**
+ * @swagger
  * /api/qr-codes:
  *   post:
  *     summary: Generate a new QR code

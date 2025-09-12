@@ -1,3 +1,26 @@
+// Get QR code image by entity ID
+const getQRCodeImageByEntityIdHandler = async (req, res) => {
+  try {
+    const { entityId } = req.params;
+    // Find QR code for this entity
+    const qrCode = await getQRCodes({ page: 1, limit: 1, entityId });
+    if (!qrCode.qrCodes || qrCode.qrCodes.length === 0) {
+      return res.status(404).send('QR code not found for entity');
+    }
+    const qrData = JSON.stringify({
+      entityType: qrCode.qrCodes[0].entityType,
+      entityId: qrCode.qrCodes[0].entityId,
+      qrHash: qrCode.qrCodes[0].qrHash,
+      customData: qrCode.qrCodes[0].customData
+    });
+    // Generate PNG image
+    const qrImageBuffer = await QRCode.toBuffer(qrData, { type: 'png' });
+    res.set('Content-Type', 'image/png');
+    res.send(qrImageBuffer);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+};
 const {
   generateQRCode,
   getQRCodes,
@@ -395,6 +418,7 @@ module.exports = {
   getQRCodeByIdHandler,
   scanQRCodeHandler,
   getQRCodeImageHandler,
+  getQRCodeImageByEntityIdHandler,
   updateQRCodeHandler,
   deleteQRCodeHandler,
 };

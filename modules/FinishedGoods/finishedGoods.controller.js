@@ -343,6 +343,31 @@ const deleteFinishedGoodHandler = async (req, res) => {
   }
 };
 
+// Get finished goods for the logged-in user (manufacturer)
+const getFinishedGoodsByUserHandler = async (req, res) => {
+  try {
+    // userId from JWT (attached by authMiddleware)
+    const userId = req.user.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'User not found in token' });
+    }
+    // Optionally support pagination
+    const { page = 1, limit = 10 } = req.query;
+    const result = await require('./finishedGoods.service').getFinishedGoods({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      manufacturerId: userId,
+    });
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: 'Finished goods for user retrieved successfully',
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   createFinishedGoodHandler,
   getFinishedGoodsHandler,
@@ -350,4 +375,5 @@ module.exports = {
   getFinishedGoodCompositionHandler,
   updateFinishedGoodHandler,
   deleteFinishedGoodHandler,
+  getFinishedGoodsByUserHandler,
 };
