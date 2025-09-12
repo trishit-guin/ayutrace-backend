@@ -27,14 +27,41 @@ async function getCollectionsByFarmerHandler(req, res) {
     const farmerId = req.user.userId;
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
+    // const collections = await prisma.collectionEvent.findMany({
+    //   where: { farmerId },
+    //   orderBy: { collectionDate: 'desc' },
+    // });
     const collections = await prisma.collectionEvent.findMany({
       where: { farmerId },
       orderBy: { collectionDate: 'desc' },
+      include: {
+        herbSpecies: { // relation name in Prisma schema
+          select: {
+            commonName: true,
+          },
+        },
+      },
     });
+    const formattedCollections = collections.map(c => ({
+      eventId: c.eventId,
+      quantity: c.quantity,
+      location: c.location,
+      latitude: c.latitude,
+      longitude: c.longitude,
+      collectionDate: c.collectionDate,
+      speciesName: c.herbSpecies ? c.herbSpecies.commonName : null, // show name if exists
+    }));
+    
+    
+    // return res.status(200).json({
+    //   message: 'Collections fetched successfully',
+    //   data: collections,
+    // });
     return res.status(200).json({
       message: 'Collections fetched successfully',
-      data: collections,
+      data: formattedCollections,
     });
+    
   } catch (error) {
     console.error('Error fetching collections by farmer:', error);
     return res.status(500).json({ message: 'Internal server error' });

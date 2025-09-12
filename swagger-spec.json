@@ -1432,10 +1432,11 @@
                   "location"
                 ],
                 "properties": {
-                  "speciesCode": {
+                  "herbSpeciesId": {
                     "type": "string",
-                    "description": "Species identifier code (optional)",
-                    "example": "ASH-001"
+                    "format": "uuid",
+                    "description": "Species UUID (optional)",
+                    "example": "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                   },
                   "quantityKg": {
                     "type": "number",
@@ -1449,7 +1450,7 @@
                     "description": "JSON string containing quality assessment data",
                     "example": "{\"moisture\": 12.5, \"purity\": 95, \"color\": \"green\", \"aroma\": \"strong\"}"
                   },
-                  "filePath": {
+                  "photoUrl": {
                     "type": "string",
                     "format": "uri",
                     "description": "URL of collection photo (optional)",
@@ -1482,34 +1483,27 @@
                       "properties": {
                         "eventId": {
                           "type": "string",
-                          "format": "uuid",
-                          "example": "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                          "format": "uuid"
                         },
                         "collectorId": {
                           "type": "string",
-                          "format": "uuid",
-                          "example": "b1c2d3e4-f5g6-7890-1234-567890abcdef"
+                          "format": "uuid"
                         },
                         "collectionDate": {
                           "type": "string",
-                          "format": "date-time",
-                          "example": "2025-09-05T10:30:00Z"
+                          "format": "date-time"
                         },
                         "quantity": {
-                          "type": "number",
-                          "example": 15.5
+                          "type": "number"
                         },
                         "location": {
-                          "type": "string",
-                          "example": "Farm Location"
+                          "type": "string"
                         },
                         "latitude": {
-                          "type": "number",
-                          "example": 17.6868
+                          "type": "number"
                         },
                         "longitude": {
-                          "type": "number",
-                          "example": 74.0183
+                          "type": "number"
                         }
                       }
                     }
@@ -1519,60 +1513,13 @@
             }
           },
           "400": {
-            "description": "Validation error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "error": {
-                      "type": "string",
-                      "example": "Validation failed"
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Quantity must be a positive number"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Validation error"
           },
           "401": {
-            "description": "Unauthorized - Invalid or missing token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Access denied. No token provided."
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Unauthorized - Invalid or missing token"
           },
           "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Internal server error"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Internal server error"
           }
         }
       }
@@ -1613,36 +1560,10 @@
             }
           },
           "401": {
-            "description": "Unauthorized - Invalid or missing token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Access denied. No token provided."
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Unauthorized - Invalid or missing token"
           },
           "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "Internal server error"
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Internal server error"
           }
         }
       }
