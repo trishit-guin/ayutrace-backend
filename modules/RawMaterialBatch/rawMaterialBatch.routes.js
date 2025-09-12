@@ -7,6 +7,7 @@ const {
   deleteRawMaterialBatchHandler,
 } = require('./rawMaterialBatch.controller');
 const { validate } = require('../Auth/middlewares/validate');
+const { authMiddleware } = require('../Auth/middlewares/auth.middleware');
 const {
   createRawMaterialBatchSchema,
   updateRawMaterialBatchSchema,
@@ -78,7 +79,7 @@ const router = express.Router();
  *         description: Unauthorized
  */
 // Create a new raw material batch
-router.post('/', validate(createRawMaterialBatchSchema), createRawMaterialBatchHandler);
+router.post('/', authMiddleware, validate(createRawMaterialBatchSchema), createRawMaterialBatchHandler);
 
 /**
  * @swagger

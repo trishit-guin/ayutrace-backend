@@ -1,26 +1,3 @@
-// Get QR code image by entity ID
-const getQRCodeImageByEntityIdHandler = async (req, res) => {
-  try {
-    const { entityId } = req.params;
-    // Find QR code for this entity
-    const qrCode = await getQRCodes({ page: 1, limit: 1, entityId });
-    if (!qrCode.qrCodes || qrCode.qrCodes.length === 0) {
-      return res.status(404).send('QR code not found for entity');
-    }
-    const qrData = JSON.stringify({
-      entityType: qrCode.qrCodes[0].entityType,
-      entityId: qrCode.qrCodes[0].entityId,
-      qrHash: qrCode.qrCodes[0].qrHash,
-      customData: qrCode.qrCodes[0].customData
-    });
-    // Generate PNG image
-    const qrImageBuffer = await QRCode.toBuffer(qrData, { type: 'png' });
-    res.set('Content-Type', 'image/png');
-    res.send(qrImageBuffer);
-  } catch (error) {
-    res.status(500).send(error.message);
-  }
-};
 const {
   generateQRCode,
   getQRCodes,
@@ -30,6 +7,63 @@ const {
   scanQRCode,
 } = require('./qrCode.service');
 const QRCode = require('qrcode');
+
+// Get QR code image by entity ID
+const getQRCodeImageByEntityIdHandler = async (req, res) => {
+  try {
+    const { entityId } = req.params;
+    // Find QR code for this entity using proper foreign key relationships
+    let qrCode = null;
+    
+    // Try to find QR code by checking all entity types
+    const rawMaterialQR = await require('./qrCode.service').getQRCodes({ 
+      page: 1, 
+      limit: 1, 
+      entityType: 'RAW_MATERIAL_BATCH',
+      entityId 
+    });
+    
+    const finishedGoodQR = await require('./qrCode.service').getQRCodes({ 
+      page: 1, 
+      limit: 1, 
+      entityType: 'FINISHED_GOOD',
+      entityId 
+    });
+    
+    const supplyChainQR = await require('./qrCode.service').getQRCodes({ 
+      page: 1, 
+      limit: 1, 
+      entityType: 'SUPPLY_CHAIN_EVENT',
+      entityId 
+    });
+    
+    if (rawMaterialQR.qrCodes?.length > 0) {
+      qrCode = rawMaterialQR.qrCodes[0];
+    } else if (finishedGoodQR.qrCodes?.length > 0) {
+      qrCode = finishedGoodQR.qrCodes[0];
+    } else if (supplyChainQR.qrCodes?.length > 0) {
+      qrCode = supplyChainQR.qrCodes[0];
+    }
+    
+    if (!qrCode) {
+      return res.status(404).send('QR code not found for entity');
+    }
+    
+    const qrData = JSON.stringify({
+      entityType: qrCode.entityType,
+      entityId: qrCode.entityId,
+      qrHash: qrCode.qrHash,
+      customData: qrCode.customData
+    });
+    
+    // Generate PNG image
+    const qrImageBuffer = await QRCode.toBuffer(qrData, { type: 'png' });
+    res.set('Content-Type', 'image/png');
+    res.send(qrImageBuffer);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+};
 
 /**
  * @swagger
@@ -66,14 +100,20 @@ const QRCode = require('qrcode');
  */
 const generateQRCodeHandler = async (req, res) => {
   try {
-    const result = await generateQRCode(req.body);
-    const qrData = JSON.stringify({
+    // Add the authenticated user as the generator
+    const qrData = {
+      ...req.body,
+      generatedBy: req.user?.userId || req.body.generatedBy
+    };
+    
+    const result = await generateQRCode(qrData);
+    const qrDataForImage = JSON.stringify({
       entityType: req.body.entityType,
       entityId: req.body.entityId,
       customData: req.body.customData,
       qrHash: result.qrHash
     });
-    const qrImage = await QRCode.toDataURL(qrData);
+    const qrImage = await QRCode.toDataURL(qrDataForImage);
     res.status(201).json({
       success: true,
       data: {

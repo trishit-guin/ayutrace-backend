@@ -9,12 +9,28 @@ const generateQRCode = async (data) => {
   const qrHash = crypto.randomBytes(16).toString('hex');
   
   const { purpose, ...prismaData } = data;
-  return await prisma.qRCode.create({
-    data: {
-      ...prismaData,
-      // Let Prisma generate UUID automatically
-      qrHash,
-    },
+  
+  // Prepare QR code data with proper foreign key connections
+  const qrCodeData = {
+    ...prismaData,
+    qrHash,
+  };
+
+  // Set the appropriate foreign key based on entity type
+  switch (data.entityType) {
+    case 'RAW_MATERIAL_BATCH':
+      qrCodeData.rawMaterialBatchId = data.entityId;
+      break;
+    case 'FINISHED_GOOD':
+      qrCodeData.finishedGoodId = data.entityId;
+      break;
+    case 'SUPPLY_CHAIN_EVENT':
+      qrCodeData.supplyChainEventId = data.entityId;
+      break;
+  }
+
+  const createdQRCode = await prisma.qRCode.create({
+    data: qrCodeData,
     include: {
       generatedByUser: {
         select: {
@@ -23,9 +39,75 @@ const generateQRCode = async (data) => {
           lastName: true,
           orgType: true,
         }
+      },
+      rawMaterialBatch: {
+        select: {
+          batchId: true,
+          herbName: true,
+          scientificName: true,
+        }
+      },
+      finishedGood: {
+        select: {
+          productId: true,
+          productName: true,
+          productType: true,
+        }
+      },
+      supplyChainEvent: {
+        select: {
+          eventId: true,
+          eventType: true,
+          timestamp: true,
+          handlerId: true,
+          fromLocationId: true,
+          toLocationId: true,
+          rawMaterialBatchId: true,
+          finishedGoodId: true,
+          notes: true,
+          custody: true,
+          createdAt: true,
+          updatedAt: true
+        }
       }
     }
   });
+
+  // Associate QR code ID with the corresponding entity
+  switch (data.entityType) {
+    case 'RAW_MATERIAL_BATCH':
+      await prisma.rawMaterialBatch.update({
+        where: { batchId: data.entityId },
+        data: {
+          qrCodes: {
+            connect: { qrCodeId: createdQRCode.qrCodeId }
+          }
+        }
+      });
+      break;
+    case 'FINISHED_GOOD':
+      await prisma.finishedGood.update({
+        where: { productId: data.entityId },
+        data: {
+          qrCodes: {
+            connect: { qrCodeId: createdQRCode.qrCodeId }
+          }
+        }
+      });
+      break;
+    case 'SUPPLY_CHAIN_EVENT':
+      await prisma.supplyChainEvent.update({
+        where: { eventId: data.entityId },
+        data: {
+          qrCodes: {
+            connect: { qrCodeId: createdQRCode.qrCodeId }
+          }
+        }
+      });
+      break;
+  }
+
+  return createdQRCode;
 };
 
 // Get all QR codes with pagination and filters
@@ -52,6 +134,27 @@ const getQRCodes = async ({ page, limit, entityType, entityId }) => {
             firstName: true,
             lastName: true,
             orgType: true,
+          }
+        },
+        rawMaterialBatch: {
+          select: {
+            batchId: true,
+            herbName: true,
+            scientificName: true,
+          }
+        },
+        finishedGood: {
+          select: {
+            productId: true,
+            productName: true,
+            productType: true,
+          }
+        },
+        supplyChainEvent: {
+          select: {
+            eventId: true,
+            eventType: true,
+            description: true,
           }
         }
       },
@@ -82,7 +185,38 @@ const getQRCodeById = async (qrCodeId) => {
           firstName: true,
           lastName: true,
           orgType: true,
-          email: true,
+        }
+      },
+      rawMaterialBatch: {
+        include: {
+          collectionEvents: {
+            include: {
+              farmer: true,
+              collector: true,
+              herbSpecies: true,
+            }
+          },
+          supplyChainEvents: true
+        }
+      },
+      finishedGood: {
+        include: {
+          manufacturer: true,
+          composition: {
+            include: {
+              rawMaterialBatch: true
+            }
+          },
+          supplyChainEvents: true
+        }
+      },
+      supplyChainEvent: {
+        include: {
+          handler: true,
+          fromLocation: true,
+          toLocation: true,
+          rawMaterialBatch: true,
+          finishedGood: true
         }
       }
     }

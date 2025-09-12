@@ -67,7 +67,13 @@ const {
  */
 const createFinishedGoodHandler = async (req, res) => {
   try {
-    const result = await createFinishedGood(req.body);
+    // Add the authenticated user as the manufacturer
+    const productData = {
+      ...req.body,
+      manufacturerId: req.user?.userId || req.body.manufacturerId
+    };
+    
+    const result = await createFinishedGood(productData);
     res.status(201).json({
       success: true,
       data: result,

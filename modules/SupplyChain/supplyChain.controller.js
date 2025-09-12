@@ -59,7 +59,13 @@ const {
  */
 const createSupplyChainEventHandler = async (req, res) => {
   try {
-    const result = await createSupplyChainEvent(req.body);
+    // Add the authenticated user as the handler
+    const eventData = {
+      ...req.body,
+      handlerId: req.user?.userId || req.body.handlerId
+    };
+    
+    const result = await createSupplyChainEvent(eventData);
     res.status(201).json({
       success: true,
       data: result,

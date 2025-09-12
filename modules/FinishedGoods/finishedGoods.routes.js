@@ -101,7 +101,7 @@ const { authMiddleware } = require('../Auth/middlewares/auth.middleware');
  *         description: Unauthorized
  */
 // Create a new finished good
-router.post('/', validate(createFinishedGoodSchema), createFinishedGoodHandler);
+router.post('/', authMiddleware, validate(createFinishedGoodSchema), createFinishedGoodHandler);
 
 /**
  * @swagger

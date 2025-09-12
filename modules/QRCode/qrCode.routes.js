@@ -8,6 +8,7 @@ const {
   updateQRCodeHandler,
   deleteQRCodeHandler,
 } = require('./qrCode.controller');
+const { authMiddleware } = require('../Auth/middlewares/auth.middleware');
 // Validation removed
 
 const router = express.Router();
@@ -110,7 +111,7 @@ router.get('/image/:entityId', require('./qrCode.controller').getQRCodeImageByEn
  *         description: Unauthorized
  */
 // Generate a new QR code
-router.post('/', generateQRCodeHandler);
+router.post('/', authMiddleware, generateQRCodeHandler);
 
 /**
  * @swagger

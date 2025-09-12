@@ -8,6 +8,7 @@ const {
   deleteSupplyChainEventHandler,
 } = require('./supplyChain.controller');
 const { validate } = require('../Auth/middlewares/validate');
+const { authMiddleware } = require('../Auth/middlewares/auth.middleware');
 const {
   createSupplyChainEventSchema,
   updateSupplyChainEventSchema,
@@ -86,7 +87,7 @@ const router = express.Router();
  *         description: Unauthorized
  */
 // Create a new supply chain event
-router.post('/', validate(createSupplyChainEventSchema), createSupplyChainEventHandler);
+router.post('/', authMiddleware, validate(createSupplyChainEventSchema), createSupplyChainEventHandler);
 
 /**
  * @swagger

@@ -51,7 +51,13 @@ const {
  */
 const createRawMaterialBatchHandler = async (req, res) => {
   try {
-    const result = await createRawMaterialBatch(req.body);
+    // Add the authenticated user as the current owner
+    const batchData = {
+      ...req.body,
+      currentOwnerId: req.user?.userId || req.body.currentOwnerId
+    };
+    
+    const result = await createRawMaterialBatch(batchData);
     res.status(201).json({
       success: true,
       data: result,
