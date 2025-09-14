@@ -35,7 +35,7 @@ const ENUMS = {
   },
   
   QREntityType: {
-    values: ['RAW_MATERIAL_BATCH', 'FINISHED_GOOD', 'SUPPLY_CHAIN_EVENT'],
+    values: ['RAW_MATERIAL_BATCH', 'FINISHED_GOOD', 'SUPPLY_CHAIN_EVENT', 'LAB_TEST', 'CERTIFICATE'],
     description: 'Type of entity that the QR code represents'
   },
   
@@ -47,6 +47,47 @@ const ENUMS = {
   QuantityUnit: {
     values: ['KG', 'TONNES', 'GRAMS', 'POUNDS', 'PIECES', 'BOTTLES', 'BOXES'],
     description: 'Unit of measurement for quantities'
+  },
+
+  TestType: {
+    values: [
+      'ADULTERATION_TESTING',
+      'HEAVY_METALS_ANALYSIS', 
+      'MOISTURE_CONTENT',
+      'ACTIVE_INGREDIENT_ANALYSIS',
+      'MICROBIOLOGICAL_TESTING',
+      'PESTICIDE_RESIDUE_ANALYSIS',
+      'STABILITY_TESTING',
+      'STERILITY_TESTING',
+      'CONTAMINATION_TESTING',
+      'QUALITY_ASSURANCE'
+    ],
+    description: 'Type of laboratory test being performed'
+  },
+
+  TestStatus: {
+    values: ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'REJECTED', 'CANCELLED', 'REQUIRES_RETEST'],
+    description: 'Current status of laboratory test'
+  },
+
+  TestPriority: {
+    values: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'],
+    description: 'Priority level of laboratory test'
+  },
+
+  CertificateType: {
+    values: [
+      'QUALITY_CERTIFICATE',
+      'AYUSH_COMPLIANCE',
+      'ADULTERATION_FREE',
+      'HEAVY_METALS_CLEARED',
+      'MICROBIOLOGICAL_CLEARED',
+      'ORGANIC_CERTIFICATION',
+      'GMP_COMPLIANCE',
+      'EXPORT_CERTIFICATE',
+      'BATCH_CERTIFICATE'
+    ],
+    description: 'Type of certificate issued by laboratory'
   }
 };
 

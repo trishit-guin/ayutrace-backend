@@ -18,6 +18,8 @@ model User {
   phone                  String?
   lastLogin              DateTime?          @map("last_login")
   isActive               Boolean            @default(true) @map("is_active")
+  isVerified             Boolean            @default(false) @map("is_verified")
+  role                   UserRole           @default(USER)
   createdAt              DateTime           @default(now()) @map("created_at")
   updatedAt              DateTime           @updatedAt @map("updated_at")
   latitude               Float?
@@ -34,6 +36,13 @@ model User {
   qrCodes                QRCode[]
   rawMaterialBatches     RawMaterialBatch[]
   processingEvents       SupplyChainEvent[]
+  adminActions           AdminAction[]      @relation("AdminUser")
+  userActions            AdminAction[]      @relation("TargetUser")
+  
+  // Lab relations
+  labTests               LabTest[]          @relation("LabTechnician")
+  requestedTests         LabTest[]          @relation("TestRequester")
+  issuedCertificates     Certificate[]
 
   @@map("users")
 }
@@ -41,11 +50,15 @@ model User {
 model Organization {
   organizationId        String             @id @default(uuid()) @map("organization_id")
   type                  OrgType
+  isActive              Boolean            @default(true) @map("is_active")
   
   // Relations
   users                 User[]
   fromSupplyChainEvents SupplyChainEvent[] @relation("FromLocation")
   toSupplyChainEvents   SupplyChainEvent[] @relation("ToLocation")
+  labTests              LabTest[]
+  certificates          Certificate[]
+  adminActions          AdminAction[]      @relation("TargetOrganization")
 
   @@map("organizations")
 }
@@ -113,6 +126,7 @@ model RawMaterialBatch {
   qrCodes           QRCode[]
   currentOwner      User?                     @relation(fields: [currentOwnerId], references: [userId])
   supplyChainEvents SupplyChainEvent[]        @relation("RawMaterialBatchEvents")
+  labTests          LabTest[]
 
   @@map("raw_material_batches")
 }
@@ -128,10 +142,12 @@ model SupplyChainEvent {
   finishedGoodId     String?              @map("finished_good_id")
   notes              String?
   custody            Json?
+  metadata           Json?                // Added for storing additional event data
   createdAt          DateTime             @default(now()) @map("created_at")
   updatedAt          DateTime             @updatedAt @map("updated_at")
   documents          Document[]
   qrCodes            QRCode[]
+  labTests           LabTest[]            // Added relation to lab tests
   finishedGood       FinishedGood?        @relation(fields: [finishedGoodId], references: [productId])
   fromLocation       Organization         @relation("FromLocation", fields: [fromLocationId], references: [organizationId])
   handler            User                 @relation(fields: [handlerId], references: [userId])
@@ -158,6 +174,7 @@ model FinishedGood {
   manufacturer      User                      @relation(fields: [manufacturerId], references: [userId])
   qrCodes           QRCode[]
   supplyChainEvents SupplyChainEvent[]
+  labTests          LabTest[]
 
   @@map("finished_goods")
 }
@@ -191,13 +208,90 @@ model Document {
   rawMaterialBatchId String?           @map("raw_material_batch_id")
   supplyChainEventId String?           @map("supply_chain_event_id")
   finishedGoodId     String?           @map("finished_good_id")
+  labTestId          String?           @map("lab_test_id")
+  certificateId      String?           @map("certificate_id")
   collectionEvent    CollectionEvent?  @relation(fields: [collectionEventId], references: [eventId])
   finishedGood       FinishedGood?     @relation(fields: [finishedGoodId], references: [productId])
   rawMaterialBatch   RawMaterialBatch? @relation(fields: [rawMaterialBatchId], references: [batchId])
   supplyChainEvent   SupplyChainEvent? @relation(fields: [supplyChainEventId], references: [eventId])
   uploadedByUser     User?             @relation(fields: [uploadedBy], references: [userId])
+  labTest            LabTest?          @relation(fields: [labTestId], references: [testId])
+  certificate        Certificate?      @relation(fields: [certificateId], references: [certificateId])
 
   @@map("documents")
+}
+
+model LabTest {
+  testId              String              @id @default(uuid()) @map("test_id")
+  testType            TestType            @map("test_type")
+  status              TestStatus          @default(PENDING)
+  sampleName          String              @map("sample_name")
+  sampleType          String              @map("sample_type")
+  sampleDescription   String?             @map("sample_description")
+  batchNumber         String?             @map("batch_number")
+  collectionDate      DateTime            @map("collection_date")
+  testDate            DateTime?           @map("test_date")
+  completionDate      DateTime?           @map("completion_date")
+  results             Json?               // Store test results as JSON
+  methodology         String?             // Testing methodology used
+  equipment           String?             // Equipment/instruments used
+  notes               String?
+  priority            TestPriority        @default(MEDIUM)
+  cost                Float?
+  certificationNumber String?             @unique @map("certification_number")
+  blockchainTxHash    String?             @map("blockchain_tx_hash")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  
+  // Foreign keys
+  requesterId         String              @map("requester_id")
+  labTechnicianId     String?             @map("lab_technician_id")
+  organizationId      String              @map("organization_id")
+  batchId             String?             @map("batch_id")
+  finishedGoodId      String?             @map("finished_good_id")
+  supplyChainEventId  String?             @map("supply_chain_event_id")
+  
+  // Relations
+  requester           User                @relation("TestRequester", fields: [requesterId], references: [userId])
+  labTechnician       User?               @relation("LabTechnician", fields: [labTechnicianId], references: [userId])
+  organization        Organization        @relation(fields: [organizationId], references: [organizationId])
+  batch               RawMaterialBatch?   @relation(fields: [batchId], references: [batchId])
+  finishedGood        FinishedGood?       @relation(fields: [finishedGoodId], references: [productId])
+  supplyChainEvent    SupplyChainEvent?   @relation(fields: [supplyChainEventId], references: [eventId])
+  documents           Document[]
+  qrCodes             QRCode[]
+  certificates        Certificate[]
+
+  @@map("lab_tests")
+}
+
+model Certificate {
+  certificateId       String              @id @default(uuid()) @map("certificate_id")
+  certificateNumber   String              @unique @map("certificate_number")
+  certificateType     CertificateType     @map("certificate_type")
+  title               String
+  description         String?
+  issueDate           DateTime            @map("issue_date")
+  expiryDate          DateTime?           @map("expiry_date")
+  isValid             Boolean             @default(true) @map("is_valid")
+  blockchainTxHash    String?             @map("blockchain_tx_hash")
+  digitalSignature    String?             @map("digital_signature")
+  qrCodeData          String?             @map("qr_code_data")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  
+  // Foreign keys
+  testId              String?             @map("test_id")
+  organizationId      String              @map("organization_id")
+  issuerId            String              @map("issuer_id")
+  
+  // Relations
+  test                LabTest?            @relation(fields: [testId], references: [testId])
+  organization        Organization        @relation(fields: [organizationId], references: [organizationId])
+  issuer              User                @relation(fields: [issuerId], references: [userId])
+  documents           Document[]
+
+  @@map("certificates")
 }
 
 model QRCode {
@@ -215,12 +309,94 @@ model QRCode {
   rawMaterialBatchId String?           @map("raw_material_batch_id")
   finishedGoodId     String?           @map("finished_good_id")
   supplyChainEventId String?           @map("supply_chain_event_id")
+  labTestId          String?           @map("lab_test_id")
   finishedGood       FinishedGood?     @relation(fields: [finishedGoodId], references: [productId])
   generatedByUser    User?             @relation(fields: [generatedBy], references: [userId])
   rawMaterialBatch   RawMaterialBatch? @relation(fields: [rawMaterialBatchId], references: [batchId])
   supplyChainEvent   SupplyChainEvent? @relation(fields: [supplyChainEventId], references: [eventId])
+  labTest            LabTest?          @relation(fields: [labTestId], references: [testId])
 
   @@map("qr_codes")
+}
+
+model AdminAction {
+  actionId           String                @id @default(uuid()) @map("action_id")
+  actionType         AdminActionType       @map("action_type")
+  description        String
+  adminUserId        String                @map("admin_user_id")
+  targetUserId       String?               @map("target_user_id")
+  targetOrganizationId String?             @map("target_organization_id")
+  ipAddress          String?               @map("ip_address")
+  userAgent          String?               @map("user_agent")
+  metadata           Json?                 // Store additional action-specific data
+  createdAt          DateTime              @default(now()) @map("created_at")
+  
+  // Relations
+  adminUser          User                  @relation("AdminUser", fields: [adminUserId], references: [userId])
+  targetUser         User?                 @relation("TargetUser", fields: [targetUserId], references: [userId])
+  targetOrganization Organization?         @relation("TargetOrganization", fields: [targetOrganizationId], references: [organizationId])
+
+  @@map("admin_actions")
+}
+
+model SystemAlert {
+  alertId            String                @id @default(uuid()) @map("alert_id")
+  alertType          AlertType             @map("alert_type")
+  severity           AlertSeverity         @default(MEDIUM)
+  title              String
+  message            String
+  isRead             Boolean               @default(false) @map("is_read")
+  isResolved         Boolean               @default(false) @map("is_resolved")
+  entityType         String?               @map("entity_type") // 'USER', 'ORGANIZATION', 'BATCH', etc.
+  entityId           String?               @map("entity_id")
+  metadata           Json?                 // Store alert-specific data
+  createdAt          DateTime              @default(now()) @map("created_at")
+  resolvedAt         DateTime?             @map("resolved_at")
+
+  @@map("system_alerts")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AdminActionType {
+  USER_CREATED
+  USER_UPDATED
+  USER_DEACTIVATED
+  USER_ACTIVATED
+  USER_VERIFIED
+  ORGANIZATION_CREATED
+  ORGANIZATION_UPDATED
+  ORGANIZATION_DELETED
+  ORGANIZATION_ACTIVATED
+  ORGANIZATION_DEACTIVATED
+  BATCH_QUARANTINED
+  BATCH_RELEASED
+  CERTIFICATE_REVOKED
+  SYSTEM_CONFIG_UPDATED
+  DATA_EXPORT
+  ALERT_RESOLVED
+}
+
+enum AlertType {
+  SECURITY_BREACH
+  COMPLIANCE_VIOLATION
+  QUALITY_ISSUE
+  SYSTEM_ERROR
+  UNUSUAL_ACTIVITY
+  BATCH_EXPIRY
+  CERTIFICATE_EXPIRY
+  DATA_ANOMALY
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 enum OrgType {
@@ -239,11 +415,8 @@ enum RawMaterialBatchStatus {
 }
 
 enum SupplyChainEventType {
-  PROCESSING
   TESTING
-  TRANSFER
-  STORAGE
-  PACKAGING
+  DISTRIBUTION
 }
 
 enum FinishedGoodProductType {
@@ -269,6 +442,8 @@ enum QREntityType {
   RAW_MATERIAL_BATCH
   FINISHED_GOOD
   SUPPLY_CHAIN_EVENT
+  LAB_TEST
+  CERTIFICATE
 }
 
 enum ConservationStatus {
@@ -287,4 +462,45 @@ enum QuantityUnit {
   PIECES
   BOTTLES
   BOXES
+}
+
+enum TestType {
+  ADULTERATION_TESTING
+  HEAVY_METALS_ANALYSIS
+  MOISTURE_CONTENT
+  ACTIVE_INGREDIENT_ANALYSIS
+  MICROBIOLOGICAL_TESTING
+  PESTICIDE_RESIDUE_ANALYSIS
+  STABILITY_TESTING
+  STERILITY_TESTING
+  CONTAMINATION_TESTING
+  QUALITY_ASSURANCE
+}
+
+enum TestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  CANCELLED
+  REQUIRES_RETEST
+}
+
+enum TestPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CertificateType {
+  QUALITY_CERTIFICATE
+  AYUSH_COMPLIANCE
+  ADULTERATION_FREE
+  HEAVY_METALS_CLEARED
+  MICROBIOLOGICAL_CLEARED
+  ORGANIC_CERTIFICATION
+  GMP_COMPLIANCE
+  EXPORT_CERTIFICATE
+  BATCH_CERTIFICATE
 }

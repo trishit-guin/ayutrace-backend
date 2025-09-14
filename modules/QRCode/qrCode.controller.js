@@ -36,6 +36,20 @@ const getQRCodeImageByEntityIdHandler = async (req, res) => {
       entityType: 'SUPPLY_CHAIN_EVENT',
       entityId 
     });
+
+    const labTestQR = await require('./qrCode.service').getQRCodes({ 
+      page: 1, 
+      limit: 1, 
+      entityType: 'LAB_TEST',
+      entityId 
+    });
+
+    const certificateQR = await require('./qrCode.service').getQRCodes({ 
+      page: 1, 
+      limit: 1, 
+      entityType: 'CERTIFICATE',
+      entityId 
+    });
     
     if (rawMaterialQR.qrCodes?.length > 0) {
       qrCode = rawMaterialQR.qrCodes[0];
@@ -43,6 +57,10 @@ const getQRCodeImageByEntityIdHandler = async (req, res) => {
       qrCode = finishedGoodQR.qrCodes[0];
     } else if (supplyChainQR.qrCodes?.length > 0) {
       qrCode = supplyChainQR.qrCodes[0];
+    } else if (labTestQR.qrCodes?.length > 0) {
+      qrCode = labTestQR.qrCodes[0];
+    } else if (certificateQR.qrCodes?.length > 0) {
+      qrCode = certificateQR.qrCodes[0];
     }
     
     if (!qrCode) {
@@ -318,6 +336,11 @@ const getQRCodeImageHandler = async (req, res) => {
     const { id } = req.params;
     const { format = 'png', size = 200 } = req.query;
     
+    // Set CORS headers explicitly for images
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    
     const qrCode = await getQRCodeById(id);
     if (!qrCode) {
       return res.status(404).json({
@@ -452,6 +475,98 @@ const deleteQRCodeHandler = async (req, res) => {
   }
 };
 
+// Upload and scan QR code from image
+const uploadAndScanQRHandler = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No QR code image provided',
+      });
+    }
+
+    const Jimp = require('jimp');
+    const jsQR = require('jsqr');
+
+    // Read the uploaded image
+    const image = await Jimp.read(req.file.buffer);
+    
+    // Convert to grayscale for better QR reading
+    image.greyscale();
+    
+    // Get image data
+    const { data, width, height } = image.bitmap;
+    
+    // Convert Jimp data to the format jsQR expects
+    const imageData = new Uint8ClampedArray(width * height * 4);
+    for (let i = 0; i < data.length; i += 4) {
+      imageData[i] = data[i];     // R
+      imageData[i + 1] = data[i]; // G (same as R for grayscale)
+      imageData[i + 2] = data[i]; // B (same as R for grayscale)
+      imageData[i + 3] = 255;     // A (full opacity)
+    }
+
+    // Detect QR code
+    const qrResult = jsQR(imageData, width, height);
+    
+    if (!qrResult) {
+      return res.status(400).json({
+        success: false,
+        error: 'No QR code detected in the uploaded image',
+      });
+    }
+
+    let qrData;
+    try {
+      // Try to parse as JSON first
+      qrData = JSON.parse(qrResult.data);
+    } catch (e) {
+      // If not JSON, treat as direct hash
+      qrData = { qrHash: qrResult.data };
+    }
+
+    // If we have a structured QR with qrHash, scan it
+    if (qrData.qrHash) {
+      const scanResult = await scanQRCode(qrData.qrHash);
+      
+      if (!scanResult) {
+        return res.status(404).json({
+          success: false,
+          error: 'QR code not found in system or invalid',
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'QR code scanned successfully from uploaded image',
+        data: {
+          qrCodeData: qrData,
+          scanResult: scanResult,
+          detectedPosition: qrResult.location
+        }
+      });
+    } else {
+      // Return raw QR data if not in our system
+      return res.status(200).json({
+        success: true,
+        message: 'QR code detected but not in our system',
+        data: {
+          qrCodeData: qrResult.data,
+          detectedPosition: qrResult.location
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('QR upload and scan error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to process QR code image',
+      details: error.message
+    });
+  }
+};
+
 module.exports = {
   generateQRCodeHandler,
   getQRCodesHandler,
@@ -461,4 +576,5 @@ module.exports = {
   getQRCodeImageByEntityIdHandler,
   updateQRCodeHandler,
   deleteQRCodeHandler,
+  uploadAndScanQRHandler,
 };

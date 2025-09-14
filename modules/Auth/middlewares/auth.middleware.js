@@ -65,4 +65,57 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-module.exports = { authMiddleware };
+// Admin middleware - checks if user has admin role
+const adminMiddleware = (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ 
+        message: 'Authentication required',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Check if user has admin role or is ADMIN org type
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN' && req.user.orgType !== 'ADMIN') {
+      return res.status(403).json({ 
+        message: 'Access denied. Admin privileges required.',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    next();
+  } catch (error) {
+    return res.status(500).json({ 
+      message: 'Error checking admin privileges',
+      timestamp: new Date().toISOString(),
+    });
+  }
+};
+
+// Super admin middleware - checks if user has super admin role
+const superAdminMiddleware = (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ 
+        message: 'Authentication required',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    if (req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ 
+        message: 'Access denied. Super admin privileges required.',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    next();
+  } catch (error) {
+    return res.status(500).json({ 
+      message: 'Error checking super admin privileges',
+      timestamp: new Date().toISOString(),
+    });
+  }
+};
+
+module.exports = { authMiddleware, adminMiddleware, superAdminMiddleware };

@@ -27,7 +27,7 @@ const {
  *             properties:
  *               eventType:
  *                 type: string
- *                 enum: [PROCESSING, TESTING, TRANSFER, STORAGE, PACKAGING]
+ *                 enum: [TESTING, DISTRIBUTION]
  *               handlerId:
  *                 type: string
  *               fromLocationId:
@@ -100,7 +100,7 @@ const createSupplyChainEventHandler = async (req, res) => {
  *         name: eventType
  *         schema:
  *           type: string
- *           enum: [PROCESSING, TESTING, TRANSFER, STORAGE, PACKAGING]
+ *           enum: [TESTING, DISTRIBUTION]
  *       - in: query
  *         name: handlerId
  *         schema:
@@ -242,7 +242,7 @@ const getSupplyChainByBatchHandler = async (req, res) => {
  *             properties:
  *               eventType:
  *                 type: string
- *                 enum: [PROCESSING, TESTING, TRANSFER, STORAGE, PACKAGING]
+ *                 enum: [TESTING, DISTRIBUTION]
  *               notes:
  *                 type: string
  *               custody:

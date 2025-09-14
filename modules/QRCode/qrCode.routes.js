@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const {
   generateQRCodeHandler,
   getQRCodesHandler,
@@ -7,9 +8,26 @@ const {
   getQRCodeImageHandler,
   updateQRCodeHandler,
   deleteQRCodeHandler,
+  uploadAndScanQRHandler,
 } = require('./qrCode.controller');
 const { authMiddleware } = require('../Auth/middlewares/auth.middleware');
 // Validation removed
+
+// Configure multer for image upload
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 const router = express.Router();
 
@@ -307,5 +325,60 @@ router.put('/:id', updateQRCodeHandler);
  */
 // Delete a QR code
 router.delete('/:id', deleteQRCodeHandler);
+
+/**
+ * @swagger
+ * /api/qr-codes/upload-scan:
+ *   post:
+ *     summary: Upload QR code image and scan it
+ *     description: Upload an image containing a QR code and automatically scan it for traceability information
+ *     tags: [QR Codes]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               qrImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: QR code image file (PNG, JPEG, etc.)
+ *     responses:
+ *       200:
+ *         description: QR code successfully detected and scanned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     qrCodeData:
+ *                       type: object
+ *                       description: Detected QR code data
+ *                     scanResult:
+ *                       type: object
+ *                       description: Scan result with entity data and traceability info
+ *                     detectedPosition:
+ *                       type: object
+ *                       description: QR code position in the image
+ *       400:
+ *         description: No QR code detected in image or invalid file
+ *       404:
+ *         description: QR code not found in system
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/upload-scan', authMiddleware, upload.single('qrImage'), uploadAndScanQRHandler);
 
 module.exports = router;

@@ -3,7 +3,7 @@ const { z } = require('zod');
 // Schema for creating a supply chain event
 const createSupplyChainEventSchema = z.object({
   body: z.object({
-    eventType: z.enum(['PROCESSING', 'TESTING', 'TRANSFER', 'STORAGE', 'PACKAGING']),
+  eventType: z.enum(['TESTING', 'DISTRIBUTION']),
     handlerId: z.string().uuid('Valid handler ID is required'),
     fromLocationId: z.string().uuid('Valid from location ID is required'),
     toLocationId: z.string().uuid('Valid to location ID is required'),
@@ -27,7 +27,7 @@ const createSupplyChainEventSchema = z.object({
 // Schema for updating a supply chain event
 const updateSupplyChainEventSchema = z.object({
   body: z.object({
-    eventType: z.enum(['PROCESSING', 'TESTING', 'TRANSFER', 'STORAGE', 'PACKAGING']).optional(),
+  eventType: z.enum(['TESTING', 'DISTRIBUTION']).optional(),
     notes: z.string().optional(),
     custody: z.object({
       transferredBy: z.string().optional(),
@@ -47,7 +47,7 @@ const getSupplyChainEventsSchema = z.object({
   query: z.object({
     page: z.string().transform(Number).pipe(z.number().int().positive()).optional(),
     limit: z.string().transform(Number).pipe(z.number().int().positive().max(100)).optional(),
-    eventType: z.enum(['PROCESSING', 'TESTING', 'TRANSFER', 'STORAGE', 'PACKAGING']).optional(),
+  eventType: z.enum(['TESTING', 'DISTRIBUTION']).optional(),
     handlerId: z.string().uuid().optional(),
     batchId: z.string().optional(),
   }),

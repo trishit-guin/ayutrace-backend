@@ -40,6 +40,7 @@ const options = {
       { name: 'Species', description: 'Herb species management with conservation and regulatory information' },
       { name: 'Collection Events', description: 'Herb collection event tracking with quality metrics' },
       { name: 'Organization', description: 'Organization management operations' },
+      { name: 'Labs', description: 'Laboratory testing and certification management for quality assurance' },
       { name: 'Utilities', description: 'Utility endpoints for testing and development - enum values and sample data' },
     ],
     components: {
@@ -992,6 +993,7 @@ const options = {
   './modules/Species/species.routes.js',
   './modules/Organization/organization.routes.js',
   './modules/Organization/organization.controller.js',
+  './modules/Labs/labs.routes.js',
   './modules/Utils/utils.routes.js',
   ],
 };

@@ -5,6 +5,9 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
+// Import super admin initialization
+const { initSuperAdmin } = require('./utils/initSuperAdmin');
+
 // Import routes that we know work
 const authRoutes = require('./modules/Auth/auth.routes');
 const collectionRoutes = require('./modules/Collection/collection.routes');
@@ -15,6 +18,8 @@ const finishedGoodsRoutes = require('./modules/FinishedGoods/finishedGoods.route
 const documentsRoutes = require('./modules/Documents/documents.routes');
 const speciesRoutes = require('./modules/Species/species.routes');
 const utilsRoutes = require('./modules/Utils/utils.routes');
+const labsRoutes = require('./modules/Labs/labs.routes');
+const adminRoutes = require('./modules/Admin/admin.routes');
 
 // Import swagger
 const { specs, swaggerUi } = require('./config/swagger');
@@ -24,7 +29,16 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 // Basic middleware
 app.use(helmet());
-app.use(cors());
+
+// Configure CORS with explicit options
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:3001', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token'],
+  exposedHeaders: ['Content-Disposition']
+}));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -53,6 +67,8 @@ app.get('/', (req, res) => {
       qrCodes: '/api/qr-codes',
       species: '/api/species',
       utils: '/api/utils',
+      labs: '/api/labs',
+      admin: '/api/admin',
     }
   });
 });
@@ -83,6 +99,13 @@ app.use('/api/finished-goods', finishedGoodsRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/species', speciesRoutes);
 app.use('/api/utils', utilsRoutes);
+app.use('/api/labs', labsRoutes);
+app.use('/api/admin', adminRoutes);
+
+// Debug endpoint
+const { debugAuth } = require('./debug-auth');
+app.get('/api/debug/auth', debugAuth);
+
 // Register organization routes
 const organizationRoutes = require('./modules/Organization/organization.routes');
 app.use('/api/organization', organizationRoutes);
@@ -105,8 +128,15 @@ app.use('*', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 AyuTrace Backend Server is running on port ${PORT}`);
   console.log(`📖 API Documentation: http://localhost:${PORT}/api-docs`);
   console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
+  
+  // Initialize super admin if none exists
+  try {
+    await initSuperAdmin();
+  } catch (error) {
+    console.error('⚠️  Failed to initialize super admin:', error.message);
+  }
 });

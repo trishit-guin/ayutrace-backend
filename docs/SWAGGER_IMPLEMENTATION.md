@@ -90,7 +90,7 @@ I have successfully implemented a comprehensive Swagger/OpenAPI 3.0 documentatio
 
 ### For QA/Testing
 - **Postman Collection**: Import and start testing immediately
-- **Test Scenarios**: Multiple examples for different user roles and error conditions
+- **Test Scenarios**: Multiple examples for different user roles and event types (TESTING, DISTRIBUTION)
 - **Response Validation**: Expected response schemas for verification
 - **Authentication Flow**: Complete authentication testing workflow
 

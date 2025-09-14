@@ -27,6 +27,13 @@ const generateQRCode = async (data) => {
     case 'SUPPLY_CHAIN_EVENT':
       qrCodeData.supplyChainEventId = data.entityId;
       break;
+    case 'LAB_TEST':
+      qrCodeData.labTestId = data.entityId;
+      break;
+    case 'CERTIFICATE':
+      // For certificates, we store the entityId directly since there's no certificateId foreign key
+      // The entityId will be the certificate ID itself
+      break;
   }
 
   const createdQRCode = await prisma.qRCode.create({
@@ -154,7 +161,7 @@ const getQRCodes = async ({ page, limit, entityType, entityId }) => {
           select: {
             eventId: true,
             eventType: true,
-            description: true,
+            timestamp: true,
           }
         }
       },
@@ -422,6 +429,179 @@ const scanQRCode = async (qrHash) => {
           }
         }
       });
+      break;
+
+    case 'LAB_TEST':
+      entityData = await prisma.labTest.findUnique({
+        where: { testId: qrCode.entityId },
+        include: {
+          requester: {
+            select: {
+              userId: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              orgType: true,
+              organization: {
+                select: {
+                  organizationId: true,
+                  type: true
+                }
+              }
+            }
+          },
+          labTechnician: {
+            select: {
+              userId: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true
+            }
+          },
+          organization: {
+            select: {
+              organizationId: true,
+              type: true
+            }
+          },
+          batch: {
+            select: {
+              batchId: true,
+              herbName: true,
+              scientificName: true,
+              quantity: true,
+              unit: true,
+              description: true,
+              collectionEvents: {
+                include: {
+                  farmer: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                      location: true
+                    }
+                  },
+                  herbSpecies: {
+                    select: {
+                      commonName: true,
+                      scientificName: true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          finishedGood: {
+            select: {
+              productId: true,
+              productName: true,
+              productType: true,
+              description: true,
+              batchNumber: true,
+              manufacturer: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  orgType: true
+                }
+              }
+            }
+          },
+          certificates: {
+            select: {
+              certificateId: true,
+              certificateNumber: true,
+              certificateType: true,
+              title: true,
+              issueDate: true,
+              expiryDate: true,
+              isValid: true
+            }
+          }
+        }
+      });
+
+      // For lab tests, provide additional traceability info
+      if (entityData) {
+        traceabilityData = {
+          testStatus: entityData.status,
+          testResults: entityData.results,
+          methodology: entityData.methodology,
+          equipment: entityData.equipment,
+          completionDate: entityData.completionDate,
+          certificationNumber: entityData.certificationNumber,
+          blockchainTxHash: entityData.blockchainTxHash,
+          sourceEntity: entityData.batch ? 'RAW_MATERIAL_BATCH' : entityData.finishedGood ? 'FINISHED_GOOD' : null,
+          sourceEntityData: entityData.batch || entityData.finishedGood,
+          labInfo: {
+            organizationId: entityData.organization.organizationId,
+            type: entityData.organization.type,
+            labTechnician: entityData.labTechnician
+          }
+        };
+      }
+      break;
+
+    case 'CERTIFICATE':
+      entityData = await prisma.certificate.findUnique({
+        where: { certificateId: qrCode.entityId },
+        include: {
+          test: {
+            select: {
+              testId: true,
+              testType: true,
+              sampleName: true,
+              status: true,
+              results: true,
+              completionDate: true,
+              requester: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  orgType: true
+                }
+              }
+            }
+          },
+          organization: {
+            select: {
+              organizationId: true,
+              type: true
+            }
+          },
+          issuer: {
+            select: {
+              userId: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
+        }
+      });
+
+      // For certificates, provide verification info
+      if (entityData) {
+        traceabilityData = {
+          certificateValidity: {
+            isValid: entityData.isValid,
+            issueDate: entityData.issueDate,
+            expiryDate: entityData.expiryDate,
+            isExpired: entityData.expiryDate ? new Date() > new Date(entityData.expiryDate) : false
+          },
+          digitalSignature: entityData.digitalSignature,
+          blockchainTxHash: entityData.blockchainTxHash,
+          relatedTest: entityData.test,
+          issuingLab: {
+            organizationId: entityData.organization.organizationId,
+            type: entityData.organization.type,
+            issuer: entityData.issuer
+          }
+        };
+      }
       break;
   }
 
