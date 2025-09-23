@@ -1,23 +1,73 @@
 const { PrismaClient } = require('@prisma/client');
+const blockchainService = require('../../utils/blockchainService');
 const prisma = new PrismaClient();
 
 // Create a new supply chain event
 const createSupplyChainEvent = async (data) => {
-  return await prisma.supplyChainEvent.create({
-    data: {
-      ...data,
-      // Let Prisma generate UUID automatically
-      timestamp: new Date(),
-    },
-    include: {
-      handler: true,
-      fromLocation: true,
-      toLocation: true,
-      rawMaterialBatch: true,
-      finishedGood: true,
-      documents: true,
-    }
-  });
+  try {
+    console.log(`📦 [SupplyChainService] Creating supply chain event:`, {
+      eventType: data.eventType,
+      handlerId: data.handlerId,
+      finishedGoodId: data.finishedGoodId
+    });
+
+    // Create the supply chain event in database
+    const createdSupplyChainEvent = await prisma.supplyChainEvent.create({
+      data: {
+        ...data,
+        // Let Prisma generate UUID automatically
+        timestamp: new Date(),
+      },
+      include: {
+        handler: true,
+        fromLocation: true,
+        toLocation: true,
+        rawMaterialBatch: true,
+        finishedGood: true,
+        documents: true,
+      }
+    });
+
+    console.log(`✅ [SupplyChainService] Supply chain event created successfully in database:`, {
+      eventId: createdSupplyChainEvent.eventId,
+      eventType: createdSupplyChainEvent.eventType
+    });
+
+    // Send to blockchain in background (don't block the API response)
+    setImmediate(async () => {
+      try {
+        console.log(`🔗 [SupplyChainService] Sending supply chain event to blockchain...`);
+        console.log(`📋 [SupplyChainService] Created supply chain event data being sent to blockchain:`, {
+          eventId: createdSupplyChainEvent.eventId,
+          eventType: createdSupplyChainEvent.eventType,
+          finishedGoodId: createdSupplyChainEvent.finishedGoodId,
+          handlerId: createdSupplyChainEvent.handlerId,
+          fromLocationId: createdSupplyChainEvent.fromLocationId,
+          toLocationId: createdSupplyChainEvent.toLocationId,
+          notes: createdSupplyChainEvent.notes
+        });
+        
+        // Prepare data for blockchain
+        const blockchainData = await blockchainService.prepareSupplyChainEventData(createdSupplyChainEvent);
+        
+        // Send to blockchain
+        const blockchainResult = await blockchainService.sendSupplyChainEventToBlockchain(blockchainData);
+        
+        if (blockchainResult.success) {
+          console.log(`✅ [SupplyChainService] Supply chain event successfully sent to blockchain`);
+        } else {
+          console.warn(`⚠️ [SupplyChainService] Failed to send supply chain event to blockchain:`, blockchainResult.error);
+        }
+      } catch (blockchainError) {
+        console.error(`❌ [SupplyChainService] Blockchain integration error:`, blockchainError.message);
+      }
+    });
+
+    return createdSupplyChainEvent;
+  } catch (error) {
+    console.error(`❌ [SupplyChainService] Failed to create supply chain event:`, error.message);
+    throw error;
+  }
 };
 
 // Get all supply chain events with pagination and filters

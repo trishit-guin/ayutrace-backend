@@ -4,6 +4,9 @@ async function createCollectionEventHandler(req, res) {
   // The logged-in user is attached to `req.user` by the authMiddleware
   const collector = req.user;
   
+  console.log(`🚀 [CollectionController] Collection event request received from user: ${collector.userId}`);
+  console.log(`📋 [CollectionController] Request body:`, req.body);
+  
   const eventData = {
     ...req.body,
     // Parse the JSON string from the request body into a JSON object
@@ -12,13 +15,22 @@ async function createCollectionEventHandler(req, res) {
 
   try {
     const result = await createCollectionEvent(eventData, collector);
+    console.log(`🎉 [CollectionController] Collection event created successfully: ${result.eventId}`);
+    
     return res.status(201).json({
       message: 'Collection event recorded successfully',
       data: result,
     });
   } catch (error) {
-    console.error('Error creating collection event:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    console.error(`❌ [CollectionController] Error creating collection event:`, {
+      userId: collector.userId,
+      error: error.message,
+      stack: error.stack
+    });
+    return res.status(500).json({ 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }
 
@@ -71,8 +83,8 @@ async function createCollectionEventHandler(req, res) {
 async function getCollectionsByFarmerHandler(req, res) {
   try {
     const farmerId = req.user.userId;
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
+    const dbConnection = require('../../utils/database');
+    const prisma = dbConnection.getClient();
     
     const collections = await prisma.collectionEvent.findMany({
       where: { farmerId },

@@ -58,16 +58,22 @@
 //   createCollectionEvent,
 // };
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const dbConnection = require('../../utils/database');
+const blockchainService = require('../../utils/blockchainService');
+const prisma = dbConnection.getClient();
 
 async function createCollectionEvent(data, collector) {
   const { herbSpeciesId, quantityKg, initialQualityMetrics, photoUrl, location } = data;
   const { userId } = collector;
 
+  console.log(`🌱 [CollectionService] Creating collection event for farmer: ${userId}`);
+  console.log(`📊 [CollectionService] Collection data:`, { herbSpeciesId, quantityKg, location });
+
   const { latitude, longitude } = JSON.parse(location);
 
   const result = await prisma.$transaction(async (tx) => {
+    console.log(`💾 [CollectionService] Starting database transaction`);
+    
     const collectionEvent = await tx.collectionEvent.create({
       data: {
         collectorId: userId,
@@ -83,7 +89,10 @@ async function createCollectionEvent(data, collector) {
       }
     });
 
+    console.log(`✅ [CollectionService] Collection event created in database: ${collectionEvent.eventId}`);
+
     if (photoUrl) {
+      console.log(`📸 [CollectionService] Adding photo document to collection`);
       await tx.document.create({
         data: {
           documentType: 'PHOTO',
@@ -95,6 +104,25 @@ async function createCollectionEvent(data, collector) {
           uploadedBy: userId,
         },
       });
+      console.log(`✅ [CollectionService] Photo document added successfully`);
+    }
+
+    // Send to blockchain after successful database creation
+    try {
+      console.log(`🔗 [CollectionService] Sending collection event to blockchain`);
+      const blockchainData = await blockchainService.prepareCollectionEventData(collectionEvent, collector);
+      const blockchainResult = await blockchainService.sendCollectionEvent(blockchainData);
+      
+      if (blockchainResult.success) {
+        console.log(`✅ [CollectionService] Collection event successfully recorded on blockchain`);
+      } else {
+        console.error(`⚠️ [CollectionService] Failed to record on blockchain, but database record created:`, blockchainResult.error);
+        // We don't throw here because the collection was successfully created in database
+        // Blockchain integration failure shouldn't prevent the collection from being recorded
+      }
+    } catch (blockchainError) {
+      console.error(`❌ [CollectionService] Blockchain integration error:`, blockchainError.message);
+      // Continue execution - blockchain failure shouldn't prevent database success
     }
 
     return {
@@ -108,6 +136,7 @@ async function createCollectionEvent(data, collector) {
     };
   });
 
+  console.log(`🎉 [CollectionService] Collection event creation completed successfully: ${result.eventId}`);
   return result;
 }
 

@@ -44,6 +44,14 @@ model User {
   requestedTests         LabTest[]          @relation("TestRequester")
   issuedCertificates     Certificate[]
 
+  // Distributor relations
+  distributorInventory   DistributorInventory[]
+  distributorShipments   DistributorShipment[]
+  receivedShipments      DistributorShipment[] @relation("RecipientShipments")
+  distributorVerifications DistributorVerification[]
+  verificationActions    DistributorVerification[] @relation("DistributorVerifier")
+  distributorAnalytics   DistributorAnalytics[]
+
   @@map("users")
 }
 
@@ -210,6 +218,7 @@ model Document {
   finishedGoodId     String?           @map("finished_good_id")
   labTestId          String?           @map("lab_test_id")
   certificateId      String?           @map("certificate_id")
+  shipmentId         String?           @map("shipment_id")
   collectionEvent    CollectionEvent?  @relation(fields: [collectionEventId], references: [eventId])
   finishedGood       FinishedGood?     @relation(fields: [finishedGoodId], references: [productId])
   rawMaterialBatch   RawMaterialBatch? @relation(fields: [rawMaterialBatchId], references: [batchId])
@@ -217,6 +226,7 @@ model Document {
   uploadedByUser     User?             @relation(fields: [uploadedBy], references: [userId])
   labTest            LabTest?          @relation(fields: [labTestId], references: [testId])
   certificate        Certificate?      @relation(fields: [certificateId], references: [certificateId])
+  shipment           DistributorShipment? @relation("ShipmentDocuments", fields: [shipmentId], references: [shipmentId])
 
   @@map("documents")
 }
@@ -292,6 +302,144 @@ model Certificate {
   documents           Document[]
 
   @@map("certificates")
+}
+
+model DistributorInventory {
+  inventoryId         String              @id @default(uuid()) @map("inventory_id")
+  distributorId       String              @map("distributor_id")
+  productType         InventoryProductType @map("product_type")
+  entityId            String              @map("entity_id") // Either rawMaterialBatchId or finishedGoodId
+  quantity            Float
+  unit                QuantityUnit
+  location            String?             // Storage location within distributor facility
+  warehouseSection    String?             @map("warehouse_section")
+  status              InventoryStatus     @default(IN_STOCK)
+  receivedDate        DateTime            @map("received_date")
+  expiryDate          DateTime?           @map("expiry_date")
+  supplierInfo        Json?               @map("supplier_info") // Details about who supplied this inventory
+  qualityNotes        String?             @map("quality_notes")
+  storageConditions   String?             @map("storage_conditions")
+  lastUpdated         DateTime            @updatedAt @map("last_updated")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  
+  // Relations
+  distributor         User                @relation(fields: [distributorId], references: [userId])
+  shipments           DistributorShipment[] @relation("InventoryShipments")
+  verificationRecords DistributorVerification[]
+
+  @@map("distributor_inventory")
+}
+
+model DistributorShipment {
+  shipmentId          String              @id @default(uuid()) @map("shipment_id")
+  distributorId       String              @map("distributor_id")
+  shipmentNumber      String              @unique @map("shipment_number")
+  recipientType       RecipientType       @map("recipient_type")
+  recipientId         String              @map("recipient_id") // User ID of recipient
+  recipientName       String              @map("recipient_name")
+  recipientAddress    String              @map("recipient_address")
+  recipientPhone      String?             @map("recipient_phone")
+  shipmentDate        DateTime            @map("shipment_date")
+  expectedDelivery    DateTime?           @map("expected_delivery")
+  actualDelivery      DateTime?           @map("actual_delivery")
+  status              ShipmentStatus      @default(PREPARING)
+  trackingNumber      String?             @map("tracking_number")
+  carrierInfo         Json?               @map("carrier_info") // Logistics partner details
+  shippingCost        Float?              @map("shipping_cost")
+  totalValue          Float?              @map("total_value")
+  notes               String?
+  specialInstructions String?             @map("special_instructions")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  
+  // Relations
+  distributor         User                @relation(fields: [distributorId], references: [userId])
+  recipient           User                @relation("RecipientShipments", fields: [recipientId], references: [userId])
+  items               ShipmentItem[]
+  inventoryItems      DistributorInventory[] @relation("InventoryShipments")
+  documents           Document[]          @relation("ShipmentDocuments")
+
+  @@map("distributor_shipments")
+}
+
+model ShipmentItem {
+  itemId              String              @id @default(uuid()) @map("item_id")
+  shipmentId          String              @map("shipment_id")
+  productType         InventoryProductType @map("product_type")
+  entityId            String              @map("entity_id") // rawMaterialBatchId or finishedGoodId
+  productName         String              @map("product_name")
+  quantity            Float
+  unit                QuantityUnit
+  unitPrice           Float?              @map("unit_price")
+  totalPrice          Float?              @map("total_price")
+  batchNumber         String?             @map("batch_number")
+  expiryDate          DateTime?           @map("expiry_date")
+  qualityGrade        String?             @map("quality_grade")
+  
+  // Relations
+  shipment            DistributorShipment @relation(fields: [shipmentId], references: [shipmentId])
+
+  @@map("shipment_items")
+}
+
+model DistributorVerification {
+  verificationId      String              @id @default(uuid()) @map("verification_id")
+  distributorId       String              @map("distributor_id")
+  verificationType    DistributorVerificationType @map("verification_type")
+  entityType          VerificationEntityType @map("entity_type")
+  entityId            String              @map("entity_id")
+  status              VerificationStatus  @default(PENDING)
+  verificationDate    DateTime?           @map("verification_date")
+  verifiedBy          String?             @map("verified_by") // User ID who performed verification
+  verificationMethod  String?             @map("verification_method") // QR, NFC, Visual, etc.
+  results             Json?               // Verification results and findings
+  notes               String?
+  photosUrls          String[]            @map("photos_urls")
+  documentRefs        String[]            @map("document_refs") // Reference document IDs
+  blockchainTxHash    String?             @map("blockchain_tx_hash")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  
+  // Relations
+  distributor         User                @relation(fields: [distributorId], references: [userId])
+  verifier            User?               @relation("DistributorVerifier", fields: [verifiedBy], references: [userId])
+  inventory           DistributorInventory? @relation(fields: [entityId], references: [inventoryId])
+
+  @@map("distributor_verifications")
+}
+
+model DistributorAnalytics {
+  analyticsId         String              @id @default(uuid()) @map("analytics_id")
+  distributorId       String              @map("distributor_id")
+  reportDate          DateTime            @map("report_date")
+  reportType          AnalyticsReportType @map("report_type")
+  period              AnalyticsPeriod     // DAILY, WEEKLY, MONTHLY, QUARTERLY, YEARLY
+  
+  // Inventory metrics
+  totalInventoryValue Float?              @map("total_inventory_value")
+  totalUnits          Float?              @map("total_units")
+  lowStockItems       Int?                @map("low_stock_items")
+  expiringSoonItems   Int?                @map("expiring_soon_items")
+  
+  // Shipment metrics
+  totalShipments      Int?                @map("total_shipments")
+  completedShipments  Int?                @map("completed_shipments")
+  pendingShipments    Int?                @map("pending_shipments")
+  totalShipmentValue  Float?              @map("total_shipment_value")
+  averageDeliveryTime Float?              @map("average_delivery_time") // in days
+  
+  // Quality metrics
+  verificationsPerformed Int?             @map("verifications_performed")
+  qualityIssuesFound  Int?                @map("quality_issues_found")
+  
+  // Additional metrics stored as JSON
+  customMetrics       Json?               @map("custom_metrics")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  
+  // Relations
+  distributor         User                @relation(fields: [distributorId], references: [userId])
+
+  @@map("distributor_analytics")
 }
 
 model QRCode {
@@ -503,4 +651,78 @@ enum CertificateType {
   GMP_COMPLIANCE
   EXPORT_CERTIFICATE
   BATCH_CERTIFICATE
+}
+
+enum InventoryProductType {
+  RAW_MATERIAL_BATCH
+  FINISHED_GOOD
+}
+
+enum InventoryStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+  RESERVED
+  DAMAGED
+  EXPIRED
+  QUARANTINED
+}
+
+enum RecipientType {
+  MANUFACTURER
+  DISTRIBUTOR
+  RETAILER
+  CUSTOMER
+  LAB
+}
+
+enum ShipmentStatus {
+  PREPARING
+  DISPATCHED
+  IN_TRANSIT
+  DELIVERED
+  DELAYED
+  CANCELLED
+  RETURNED
+}
+
+enum DistributorVerificationType {
+  INCOMING_GOODS_VERIFICATION
+  QUALITY_CHECK
+  AUTHENTICITY_VERIFICATION
+  BATCH_VERIFICATION
+  DOCUMENT_VERIFICATION
+  STORAGE_CONDITION_CHECK
+  EXPIRY_VERIFICATION
+}
+
+enum VerificationEntityType {
+  RAW_MATERIAL_BATCH
+  FINISHED_GOOD
+  SHIPMENT
+  INVENTORY_ITEM
+}
+
+enum VerificationStatus {
+  PENDING
+  IN_PROGRESS
+  VERIFIED
+  REJECTED
+  REQUIRES_ATTENTION
+}
+
+enum AnalyticsReportType {
+  INVENTORY_SUMMARY
+  SHIPMENT_ANALYSIS
+  QUALITY_METRICS
+  FINANCIAL_SUMMARY
+  PERFORMANCE_KPI
+}
+
+enum AnalyticsPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
 }

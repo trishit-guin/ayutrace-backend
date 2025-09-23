@@ -21,7 +21,15 @@ const createLabTestSchema = Joi.object({
   priority: Joi.string().valid('LOW', 'MEDIUM', 'HIGH', 'URGENT').default('MEDIUM'),
   notes: Joi.string().max(1000).optional(),
   batchId: Joi.string().uuid().optional(),
-  finishedGoodId: Joi.string().uuid().optional()
+  finishedGoodId: Joi.string().uuid().optional(),
+  // QR code data for product/batch linking
+  qrData: Joi.object({
+    qrHash: Joi.string().optional(),
+    entityType: Joi.string().optional(),
+    entityId: Joi.string().optional(),
+    customData: Joi.object().optional(),
+    rawQRData: Joi.string().optional()
+  }).optional()
 });
 
 const updateLabTestSchema = Joi.object({

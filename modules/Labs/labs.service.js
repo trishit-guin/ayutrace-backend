@@ -336,11 +336,30 @@ async function getLabTestById(testId, organizationId) {
 
 async function createLabTest(testData) {
   try {
+    console.log('📋 [LabService] Creating lab test with data:', {
+      testType: testData.testType,
+      sampleName: testData.sampleName,
+      batchNumber: testData.batchNumber,
+      qrData: testData.qrData ? 'QR data provided' : 'No QR data',
+      finishedGoodId: testData.finishedGoodId
+    });
+
     // Try to find existing batch or product by batch number for proper linking
     let batchId = null;
-    let finishedGoodId = null;
+    let finishedGoodId = testData.finishedGoodId; // Use provided finishedGoodId first
 
-    if (testData.batchNumber) {
+    // Method 1: Extract finishedGoodId from QR data if provided
+    if (testData.qrData && typeof testData.qrData === 'object') {
+      console.log('🔍 [LabService] Extracting data from QR code:', testData.qrData);
+      
+      if (testData.qrData.entityType === 'FINISHED_GOOD') {
+        finishedGoodId = testData.qrData.entityId;
+        console.log('✅ [LabService] Extracted finishedGoodId from QR:', finishedGoodId);
+      }
+    }
+
+    // Method 2: If batch number is provided and no finishedGoodId yet, search database
+    if (testData.batchNumber && !finishedGoodId) {
       try {
         // Try to find raw material batch first
         const rawMaterialBatch = await prisma.rawMaterialBatch.findFirst({
@@ -349,6 +368,7 @@ async function createLabTest(testData) {
         
         if (rawMaterialBatch) {
           batchId = rawMaterialBatch.batchId;
+          console.log('✅ [LabService] Found raw material batch:', batchId);
         } else {
           // Try to find finished good by product ID
           const finishedGood = await prisma.finishedGood.findFirst({
@@ -357,6 +377,7 @@ async function createLabTest(testData) {
           
           if (finishedGood) {
             finishedGoodId = finishedGood.productId;
+            console.log('✅ [LabService] Found finished good by batch number:', finishedGoodId);
           }
         }
       } catch (searchError) {
@@ -364,6 +385,12 @@ async function createLabTest(testData) {
         // Continue without linking - this is not critical
       }
     }
+
+    console.log('📦 [LabService] Final linking data:', {
+      batchId: batchId,
+      finishedGoodId: finishedGoodId,
+      willCreateSupplyChainEvent: !!(batchId || finishedGoodId)
+    });
 
     // First create the supply chain TESTING event
     let supplyChainEvent = null;
@@ -386,10 +413,21 @@ async function createLabTest(testData) {
       // Add batch or product linking to supply chain event
       if (batchId) {
         supplyChainData.rawMaterialBatchId = batchId;
+        console.log('✅ [LabService] Added rawMaterialBatchId to supply chain:', batchId);
       }
       if (finishedGoodId) {
         supplyChainData.finishedGoodId = finishedGoodId;
+        console.log('✅ [LabService] Added finishedGoodId to supply chain:', finishedGoodId);
       }
+
+      console.log('📤 [LabService] Final supply chain data before creation:', {
+        eventType: supplyChainData.eventType,
+        handlerId: supplyChainData.handlerId,
+        rawMaterialBatchId: supplyChainData.rawMaterialBatchId,
+        finishedGoodId: supplyChainData.finishedGoodId,
+        hasFinishedGoodId: !!supplyChainData.finishedGoodId,
+        finishedGoodIdType: typeof supplyChainData.finishedGoodId
+      });
 
       console.log('Creating supply chain event with data:', supplyChainData);
       supplyChainEvent = await createSupplyChainEvent(supplyChainData);

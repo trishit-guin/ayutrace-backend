@@ -7,6 +7,8 @@ const {
   getSupplyChainByBatch,
 } = require('./supplyChain.service');
 
+const { scanQRCode } = require('../QRCode/qrCode.service');
+
 /**
  * @swagger
  * /api/supply-chain-events:
@@ -59,19 +61,86 @@ const {
  */
 const createSupplyChainEventHandler = async (req, res) => {
   try {
-    // Add the authenticated user as the handler
+    console.log(`📥 [SupplyChainController] Received supply chain event creation request:`, {
+      eventType: req.body.eventType,
+      handlerId: req.body.handlerId || req.user?.userId,
+      finishedGoodId: req.body.finishedGoodId,
+      qrHash: req.body.qrHash,
+      qrData: req.body.qrData,
+      userAgent: req.headers['user-agent']
+    });
+
+    let finishedGoodId = req.body.finishedGoodId;
+    let additionalProductData = {};
+
+    // Method 1: If full QR data object is provided directly
+    if (req.body.qrData && typeof req.body.qrData === 'object') {
+      console.log(`🔍 [SupplyChainController] Extracting data from provided QR data object:`, req.body.qrData);
+      
+      if (req.body.qrData.entityType === 'FINISHED_GOOD') {
+        finishedGoodId = req.body.qrData.entityId;
+        additionalProductData = {
+          productInfo: req.body.qrData.customData?.productInfo,
+          batchNumber: req.body.qrData.customData?.batchNumber,
+          productType: req.body.qrData.customData?.productType
+        };
+        console.log(`✅ [SupplyChainController] Extracted from QR data - finishedGoodId: ${finishedGoodId}`, additionalProductData);
+      }
+    }
+    // Method 2: If QR code hash is provided, scan it from database
+    else if (req.body.qrHash && !finishedGoodId) {
+      console.log(`🔍 [SupplyChainController] Extracting finished good ID from QR code hash: ${req.body.qrHash}`);
+      
+      try {
+        const qrData = await scanQRCode(req.body.qrHash);
+        
+        if (qrData && qrData.entityType === 'FINISHED_GOOD') {
+          finishedGoodId = qrData.entityId;
+          console.log(`✅ [SupplyChainController] Extracted finished good ID from QR hash: ${finishedGoodId}`);
+        } else {
+          console.warn(`⚠️ [SupplyChainController] QR code does not contain finished good data:`, qrData?.entityType);
+        }
+      } catch (qrError) {
+        console.error(`❌ [SupplyChainController] Failed to scan QR code:`, qrError.message);
+      }
+    }
+
+    // Add the authenticated user as the handler and extracted finishedGoodId
     const eventData = {
       ...req.body,
-      handlerId: req.user?.userId || req.body.handlerId
+      handlerId: req.user?.userId || req.body.handlerId,
+      finishedGoodId: finishedGoodId,
+      // Add additional product data for reference
+      ...additionalProductData
     };
+
+    console.log(`📦 [SupplyChainController] Final event data:`, {
+      eventType: eventData.eventType,
+      handlerId: eventData.handlerId,
+      finishedGoodId: eventData.finishedGoodId,
+      productInfo: eventData.productInfo,
+      batchNumber: eventData.batchNumber,
+      productType: eventData.productType
+    });
     
     const result = await createSupplyChainEvent(eventData);
+    
+    console.log(`✅ [SupplyChainController] Supply chain event created successfully:`, {
+      eventId: result.eventId,
+      eventType: result.eventType
+    });
+    
     res.status(201).json({
       success: true,
       data: result,
       message: 'Supply chain event created successfully',
     });
   } catch (error) {
+    console.error(`❌ [SupplyChainController] Failed to create supply chain event:`, {
+      error: error.message,
+      body: req.body
+    });
+    
     res.status(400).json({
       success: false,
       error: error.message,

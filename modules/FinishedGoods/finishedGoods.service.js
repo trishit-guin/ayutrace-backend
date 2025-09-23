@@ -1,5 +1,37 @@
 const { PrismaClient } = require('@prisma/client');
+const blockchainService = require('../../utils/blockchainService');
 const prisma = new PrismaClient();
+
+/**
+ * Helper function to get collection event IDs from raw material batches
+ */
+const getCollectionEventIds = async (rawMaterialBatchIds) => {
+  try {
+    console.log(`🔍 [FinishedGoods] Getting collection events for raw material batches:`, rawMaterialBatchIds);
+    
+    const collectionEvents = await prisma.collectionEvent.findMany({
+      where: {
+        batchId: {
+          in: rawMaterialBatchIds
+        }
+      },
+      select: {
+        eventId: true,
+        batchId: true,
+        herbSpeciesId: true,
+        collectionDate: true
+      }
+    });
+
+    const eventIds = collectionEvents.map(event => event.eventId);
+    
+    console.log(`✅ [FinishedGoods] Found ${eventIds.length} collection events:`, eventIds);
+    return eventIds;
+  } catch (error) {
+    console.error(`❌ [FinishedGoods] Failed to get collection event IDs:`, error.message);
+    throw error;
+  }
+};
 
 // Create a new finished good
 const createFinishedGood = async (data) => {
@@ -27,7 +59,7 @@ const createFinishedGood = async (data) => {
     }
 
     // Return the finished good with composition
-    return await tx.finishedGood.findUnique({
+    const createdFinishedGood = await tx.finishedGood.findUnique({
       where: { productId: finishedGood.productId },
       include: {
         manufacturer: {
@@ -58,6 +90,31 @@ const createFinishedGood = async (data) => {
         documents: true,
       }
     });
+
+    // Get collection event IDs from raw material batches used in composition
+    if (composition && composition.length > 0) {
+      try {
+        console.log(`🔗 [FinishedGoods] Integrating finished good with blockchain for product: ${finishedGood.productId}`);
+        
+        const rawMaterialBatchIds = composition.map(comp => comp.rawMaterialBatchId);
+        const sourceCollectionEventIds = await getCollectionEventIds(rawMaterialBatchIds);
+        
+        // Prepare and send data to blockchain
+        const blockchainData = await blockchainService.prepareFinishedGoodData(createdFinishedGood, sourceCollectionEventIds);
+        const blockchainResult = await blockchainService.sendFinishedGoodToBlockchain(blockchainData);
+        
+        if (blockchainResult.success) {
+          console.log(`✅ [FinishedGoods] Finished good successfully added to blockchain: ${finishedGood.productId}`);
+        } else {
+          console.error(`⚠️ [FinishedGoods] Failed to add finished good to blockchain: ${finishedGood.productId}`, blockchainResult.error);
+        }
+      } catch (error) {
+        console.error(`❌ [FinishedGoods] Blockchain integration failed for finished good: ${finishedGood.productId}`, error.message);
+        // Don't throw the error - allow the finished good creation to succeed even if blockchain fails
+      }
+    }
+
+    return createdFinishedGood;
   });
 };
 

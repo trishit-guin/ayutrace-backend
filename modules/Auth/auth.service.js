@@ -1,8 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
+const dbConnection = require('../../utils/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const prisma = new PrismaClient();
+const prisma = dbConnection.getClient();
 
 // In a real app, these would be in a .env file
 const JWT_SECRET = process.env.JWT_SECRET || 'mera-default-secret';

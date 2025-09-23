@@ -5,6 +5,9 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
+// Import database connection
+const dbConnection = require('./utils/database');
+
 // Import super admin initialization
 const { initSuperAdmin } = require('./utils/initSuperAdmin');
 
@@ -20,6 +23,7 @@ const speciesRoutes = require('./modules/Species/species.routes');
 const utilsRoutes = require('./modules/Utils/utils.routes');
 const labsRoutes = require('./modules/Labs/labs.routes');
 const adminRoutes = require('./modules/Admin/admin.routes');
+const distributorRoutes = require('./modules/Distributor/distributor.routes');
 
 // Import swagger
 const { specs, swaggerUi } = require('./config/swagger');
@@ -69,6 +73,7 @@ app.get('/', (req, res) => {
       utils: '/api/utils',
       labs: '/api/labs',
       admin: '/api/admin',
+      distributor: '/api/distributor',
     }
   });
 });
@@ -101,6 +106,7 @@ app.use('/api/species', speciesRoutes);
 app.use('/api/utils', utilsRoutes);
 app.use('/api/labs', labsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/distributor', distributorRoutes);
 
 // Debug endpoint
 const { debugAuth } = require('./debug-auth');
@@ -132,6 +138,15 @@ app.listen(PORT, async () => {
   console.log(`🚀 AyuTrace Backend Server is running on port ${PORT}`);
   console.log(`📖 API Documentation: http://localhost:${PORT}/api-docs`);
   console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
+  
+  // Initialize database connection
+  try {
+    await dbConnection.connect();
+    console.log('🗄️  Database connection established');
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+    process.exit(1);
+  }
   
   // Initialize super admin if none exists
   try {

@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const dbConnection = require('../../../utils/database');
+const prisma = dbConnection.getClient();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'mera-default-secret';
 
