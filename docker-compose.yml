@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ayutrace-db
+    environment:
+      POSTGRES_DB: ayutrace_prod
+      POSTGRES_USER: ayutrace_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-your_secure_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - ayutrace-network
+    restart: unless-stopped
+
+  # Backend API
+  api:
+    build: .
+    container_name: ayutrace-api
+    environment:
+      DATABASE_URL: postgresql://ayutrace_user:${DB_PASSWORD:-your_secure_password}@postgres:5432/ayutrace_prod
+      JWT_SECRET: ${JWT_SECRET:-your-super-secure-jwt-secret}
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - ayutrace-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: ayutrace-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - api
+    networks:
+      - ayutrace-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  ayutrace-network:
+    driver: bridge

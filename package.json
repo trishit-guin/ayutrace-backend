@@ -4,7 +4,11 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "build": "prisma generate && prisma db push",
+    "deploy": "prisma generate && prisma migrate deploy",
+    "seed": "node seed-proper-linking.js"
   },
   "keywords": [],
   "author": "",
