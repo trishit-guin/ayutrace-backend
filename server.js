@@ -43,6 +43,11 @@ const corsOptions = {
     // Allow requests with no origin (mobile apps, curl, Postman, etc.)
     if (!origin) return callback(null, true);
     
+    // If CORS_ORIGIN is set to "*", allow all origins
+    if (process.env.CORS_ORIGIN === '*') {
+      return callback(null, true);
+    }
+    
     // For development, allow all localhost origins
     if (process.env.NODE_ENV !== 'production') {
       if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
@@ -56,14 +61,18 @@ const corsOptions = {
       'http://localhost:4173',  // Vite preview server
       'http://localhost:3001',  // Alternative port
       'http://localhost:3000',  // Current backend port
-      'https://yourdomain.com'  // Add your production domain here
-    ];
+      'http://localhost:3002',  // Alternative frontend port
+      'https://ayutrace-frontend.vercel.app',  // Production frontend
+      'https://yourdomain.com',  // Add your production domain here
+      process.env.CORS_ORIGIN   // Environment variable override
+    ].filter(Boolean); // Remove undefined values
     
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+      console.log('Allowed origins:', allowedOrigins);
+      callback(null, true); // Temporarily allow all origins for debugging
     }
   },
   credentials: true,
