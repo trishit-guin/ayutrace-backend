@@ -202,6 +202,8 @@ class BlockchainService {
         collectionDate: collectionEvent.collectionDate ? collectionEvent.collectionDate.toISOString() : '',
         location: location || '',
         geoTag: `geo:${collectionEvent.latitude || 0},${collectionEvent.longitude || 0}`,
+        networkId: 'ayutrace-chain-32343',
+        gasLimit: 180000,
         quantity: parseFloat(collectionEvent.quantity) || 0,
         unit: (collectionEvent.unit || '').toUpperCase(),
         qualityNotes: collectionEvent.qualityNotes || 'No quality notes provided',
