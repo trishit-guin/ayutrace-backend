@@ -11,6 +11,9 @@ const dbConnection = require('./utils/database');
 // Import super admin initialization
 const { initSuperAdmin } = require('./utils/initSuperAdmin');
 
+// Import comprehensive data seeding
+const { initAllDefaultData } = require('./utils/initComprehensiveSeeding');
+
 // Import routes that we know work
 const authRoutes = require('./modules/Auth/auth.routes');
 const collectionRoutes = require('./modules/Collection/collection.routes');
@@ -178,6 +181,13 @@ app.listen(PORT, async () => {
     process.exit(1);
   }
   
+  // Initialize all default data if they don't exist
+  try {
+    await initAllDefaultData();
+  } catch (error) {
+    console.error('⚠️  Failed to initialize default data:', error.message);
+  }
+
   // Initialize super admin if none exists
   try {
     await initSuperAdmin();

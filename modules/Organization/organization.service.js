@@ -17,7 +17,24 @@ async function findOrganizationByType(type) {
   });
 }
 
+// Get all organizations
+async function getAllOrganizations() {
+  return await prisma.organization.findMany({
+    include: {
+      _count: {
+        select: {
+          users: true
+        }
+      }
+    },
+    orderBy: {
+      type: 'asc'
+    }
+  });
+}
+
 module.exports = {
   createOrganization,
   findOrganizationByType,
+  getAllOrganizations,
 };
