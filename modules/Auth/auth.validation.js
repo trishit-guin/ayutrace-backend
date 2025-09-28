@@ -9,7 +9,7 @@ const registerUserSchema = z.object({
     firstName: z.string().min(2, 'First name is required'),
     lastName: z.string().min(2, 'Last name is required'),
     orgType: z.enum(ENUMS.OrgType.values),
-    organizationId: z.string().uuid('A valid organization ID is required'),
+    organizationId: z.string('A valid organization ID is required'),
     blockchainIdentity: z.string().min(1).optional(),
     phone: z.string().optional(),
     location: z.string().optional(),
